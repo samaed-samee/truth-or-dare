@@ -46,8 +46,9 @@
         
         <!-- Step 1: Pick Doodle Avatar & Name -->
         <div>
-          <label class="block text-xs sm:text-sm font-ui font-semibold uppercase tracking-wider text-[#6E655F] mb-2">
-            1. Pick Your Doodle & Name
+          <label class="block text-xs sm:text-sm font-ui font-semibold uppercase tracking-wider text-[#6E655F] mb-2 flex items-center justify-between">
+            <span>1. Pick Your Doodle & Name</span>
+            <span class="text-[11px] font-semibold text-rose-500 tracking-normal capitalize bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">Required *</span>
           </label>
           <div class="grid grid-cols-4 sm:grid-cols-8 gap-2.5 p-1.5 mb-2.5" id="avatar-picker">
             <!-- Fox Doodle -->
@@ -142,8 +143,10 @@
             id="player-name-input" 
             type="text" 
             maxlength="18" 
-            placeholder="Write your nickname..." 
-            class="sketch-input w-full px-3.5 py-2 text-lg font-hand"
+            placeholder="Write your nickname (Required)..." 
+            autocomplete="off"
+            spellcheck="false"
+            class="sketch-input w-full px-3.5 py-2 text-lg font-hand transition-colors duration-150"
           />
         </div>
 

@@ -2,6 +2,11 @@
 
 > A cozy, hand-drawn sketch-style web app for two friends to play Truth or Dare in real time — featuring private peer-to-peer WebRTC networking, end-to-end encryption (E2EE), live voice chat, custom prompt decks, and instant polaroid snap sharing.
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-2ea44f?style=for-the-badge&logo=github)](https://samaed-samee.github.io/truth-or-dare/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
+
+👉 **Live Web App**: [https://samaed-samee.github.io/truth-or-dare/](https://samaed-samee.github.io/truth-or-dare/)
+
 ---
 
 ## ✨ Overview
@@ -76,6 +81,10 @@ All communications—including chat messages, truth/dare cards, and photos—flo
 ---
 
 ## 📦 Getting Started
+
+### 🌐 Play Directly in Browser (No Setup Needed!)
+You can jump straight into the game with a friend on mobile or desktop:
+👉 **[https://samaed-samee.github.io/truth-or-dare/](https://samaed-samee.github.io/truth-or-dare/)**
 
 ### Prerequisites
 All you need is a modern web browser that supports WebRTC and Web Crypto (Chrome, Firefox, Safari, Edge, or mobile browsers).
@@ -183,6 +192,7 @@ truth-or-dare/
 ## 👨‍💻 Developer
 
 Crafted with ❤️ by **[samaed-samee](https://github.com/samaed-samee)**
+- **Live Web App**: [https://samaed-samee.github.io/truth-or-dare/](https://samaed-samee.github.io/truth-or-dare/)
 - **GitHub**: [@samaed-samee](https://github.com/samaed-samee)
 - **Repository**: [https://github.com/samaed-samee/truth-or-dare](https://github.com/samaed-samee/truth-or-dare)
 

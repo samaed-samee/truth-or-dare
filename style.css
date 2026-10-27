@@ -231,3 +231,13 @@ html, body {
 .polaroid-frame:hover {
   transform: rotate(0deg) scale(1.01);
 }
+
+@keyframes sketchShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+.animate-shake {
+  animation: sketchShake 0.38s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+

@@ -1438,9 +1438,33 @@
         }
       });
 
+      function validateNickname() {
+        const nameVal = el.playerNameInput.value.trim();
+        if (!nameVal) {
+          showToast('Please enter your nickname first! ✏️', '⚠️', '#FF8B8B');
+          el.playerNameInput.focus();
+          el.playerNameInput.classList.remove('animate-shake');
+          void el.playerNameInput.offsetWidth; // Force CSS reflow to re-trigger animation
+          el.playerNameInput.classList.add('animate-shake');
+          el.playerNameInput.style.borderColor = '#EF4444';
+          el.playerNameInput.style.backgroundColor = '#FEF2F2';
+          return null;
+        }
+        return nameVal;
+      }
+
+      el.playerNameInput.addEventListener('input', () => {
+        if (el.playerNameInput.value.trim()) {
+          el.playerNameInput.style.borderColor = '';
+          el.playerNameInput.style.backgroundColor = '';
+        }
+      });
+
       // Create 10-Char Room
       el.createRoomBtn.addEventListener('click', async () => {
-        const nameVal = el.playerNameInput.value.trim() || 'Sketcher 1';
+        const nameVal = validateNickname();
+        if (!nameVal) return;
+
         state.myName = nameVal;
         state.role = 'host';
         state.roomCode = generate10CharCode();
@@ -1461,13 +1485,16 @@
 
       // Join Room with 10-Char Code
       el.joinRoomBtn.addEventListener('click', async () => {
+        const nameVal = validateNickname();
+        if (!nameVal) return;
+
         const code = el.joinCodeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (code.length !== 10) {
           showToast('Please enter a full 10-character room code!', '🔑', '#FF8B8B');
           el.joinCodeInput.focus();
           return;
         }
-        const nameVal = el.playerNameInput.value.trim() || 'Sketcher 2';
+
         state.myName = nameVal;
         state.role = 'guest';
         state.roomCode = code;
@@ -1484,6 +1511,13 @@
         enterRoomScreen();
         startNetworkSession();
         saveSessionState();
+      });
+
+      el.joinCodeInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          el.joinRoomBtn.click();
+        }
       });
 
       function enterRoomScreen() {
