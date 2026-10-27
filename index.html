@@ -347,29 +347,29 @@
         </div>
 
         <!-- Dynamic Game Card Container -->
-        <div id="game-card-container" class="sketch-box bg-white p-3 relative overflow-hidden">
+        <div id="game-card-container" class="sketch-box bg-white p-2 sm:p-3 relative overflow-hidden">
           
           <!-- STATE A: Choose Truth or Dare -->
-          <div id="stage-pick-mode" class="text-center py-1">
-            <p id="stage-pick-title" class="font-title text-2xl font-bold text-[#2B2623] mb-2 leading-tight">
+          <div id="stage-pick-mode" class="text-center py-0.5 sm:py-1">
+            <p id="stage-pick-title" class="font-title text-xl sm:text-2xl font-bold text-[#2B2623] mb-1.5 sm:mb-2 leading-tight">
               Choose Truth or Dare!
             </p>
-            <div class="grid grid-cols-2 gap-2.5">
+            <div class="grid grid-cols-2 gap-2">
               <button 
                 id="choose-truth-btn" 
                 type="button"
-                class="sketch-btn py-2.5 px-3 bg-[#7EE0C6] hover:bg-[#6BD4B8] flex flex-col items-center justify-center"
+                class="sketch-btn py-1.5 sm:py-2.5 px-2.5 sm:px-3 bg-[#7EE0C6] hover:bg-[#6BD4B8] flex flex-col items-center justify-center active:scale-95"
               >
-                <span class="font-title text-2xl font-bold leading-none">TRUTH 💬</span>
-                <span class="text-[11px] font-ui text-[#2B2623]/80 mt-0.5">Honest answer</span>
+                <span class="font-title text-lg sm:text-2xl font-bold leading-none">TRUTH 💬</span>
+                <span class="text-[10px] sm:text-[11px] font-ui text-[#2B2623]/80 mt-0.5">Honest answer</span>
               </button>
               <button 
                 id="choose-dare-btn" 
                 type="button"
-                class="sketch-btn py-2.5 px-3 bg-[#FF8B8B] hover:bg-[#FF7878] flex flex-col items-center justify-center"
+                class="sketch-btn py-1.5 sm:py-2.5 px-2.5 sm:px-3 bg-[#FF8B8B] hover:bg-[#FF7878] flex flex-col items-center justify-center active:scale-95"
               >
-                <span class="font-title text-2xl font-bold leading-none">DARE ⚡</span>
-                <span class="text-[11px] font-ui text-[#2B2623]/80 mt-0.5">Fun challenge</span>
+                <span class="font-title text-lg sm:text-2xl font-bold leading-none">DARE ⚡</span>
+                <span class="text-[10px] sm:text-[11px] font-ui text-[#2B2623]/80 mt-0.5">Fun challenge</span>
               </button>
             </div>
           </div>
@@ -505,9 +505,9 @@
             id="share-photo-btn" 
             type="button"
             title="Share a Photo"
-            class="sketch-btn w-9 h-9 sm:w-10 sm:h-10 shrink-0 bg-[#FFE46B] flex items-center justify-center text-base sm:text-lg active:scale-95"
+            class="sketch-btn w-11 h-11 sm:w-12 sm:h-12 shrink-0 bg-[#FFE46B] flex items-center justify-center active:scale-95"
           >
-            📷
+            <span class="text-xl sm:text-2xl leading-none select-none">📷</span>
           </button>
 
           <!-- Message Input (Auto-expanding Multiline Textarea) -->
@@ -517,8 +517,8 @@
             maxlength="500"
             autocomplete="off"
             placeholder="Write a note or answer..." 
-            class="sketch-input flex-1 min-w-0 px-3.5 py-1.5 sm:py-2 text-base font-hand resize-none overflow-y-auto leading-snug"
-            style="min-height: 38px; max-height: 96px;"
+            class="sketch-input flex-1 min-w-0 px-3.5 sm:px-4 py-2 sm:py-2.5 text-base sm:text-lg font-hand resize-none overflow-y-auto leading-snug"
+            style="min-height: 44px; max-height: 110px;"
           ></textarea>
 
           <!-- Send Message Button -->
@@ -526,9 +526,9 @@
             id="send-msg-btn" 
             type="submit"
             title="Send Message"
-            class="sketch-btn w-9 h-9 sm:w-10 sm:h-10 shrink-0 bg-[#7EE0C6] hover:bg-[#6AD6B9] flex items-center justify-center text-base sm:text-lg active:scale-95"
+            class="sketch-btn w-11 h-11 sm:w-12 sm:h-12 shrink-0 bg-[#7EE0C6] hover:bg-[#6AD6B9] flex items-center justify-center active:scale-95"
           >
-            <span>➤</span>
+            <span class="text-xl sm:text-2xl font-bold leading-none select-none translate-x-0.5">➤</span>
           </button>
         </form>
       </footer>

@@ -23,12 +23,7 @@
 
           if (nowKeyboardOpen !== isKeyboardOpen) {
             isKeyboardOpen = nowKeyboardOpen;
-            if (isKeyboardOpen) {
-              // Automatically compact the game stage while typing so header + chat + input fit effortlessly
-              gameStageSection.classList.add('hidden');
-            } else if (!userManuallyCollapsedStage) {
-              gameStageSection.classList.remove('hidden');
-            }
+            document.body.classList.toggle('keyboard-open', isKeyboardOpen);
             scrollToBottom(false);
           }
         } else {
@@ -348,6 +343,7 @@
         imageUploadInput: document.getElementById('image-upload-input'),
         sharePhotoBtn: document.getElementById('share-photo-btn'),
         chatMessageInput: document.getElementById('chat-message-input'),
+        sendMsgBtn: document.getElementById('send-msg-btn'),
         replyPreviewBar: document.getElementById('reply-preview-bar'),
         replyTargetName: document.getElementById('reply-target-name'),
         replyTargetSnippet: document.getElementById('reply-target-snippet'),
@@ -2277,8 +2273,8 @@
       function adjustChatInputHeight() {
         if (!el.chatMessageInput) return;
         el.chatMessageInput.style.height = 'auto';
-        const newHeight = Math.min(el.chatMessageInput.scrollHeight, 96);
-        el.chatMessageInput.style.height = Math.max(newHeight, 38) + 'px';
+        const newHeight = Math.min(el.chatMessageInput.scrollHeight, 110);
+        el.chatMessageInput.style.height = Math.max(newHeight, 44) + 'px';
       }
 
       el.chatMessageInput.addEventListener('input', () => {
@@ -2296,16 +2292,26 @@
         }
       });
 
+      // Prevent send button click from taking focus away from textarea, which closes mobile virtual keyboard
+      if (el.sendMsgBtn) {
+        el.sendMsgBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+        });
+      }
+
       el.chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const text = el.chatMessageInput.value.trim();
         if (!text) return;
 
         el.chatMessageInput.value = '';
-        el.chatMessageInput.style.height = 'auto';
+        el.chatMessageInput.style.height = '44px';
         clearTimeout(myTypingTimer);
         amITyping = false;
         sendEncrypted({ type: 'typing', isTyping: false });
+
+        // Keep mobile keyboard open for continuous chat typing
+        el.chatMessageInput.focus({ preventScroll: true });
 
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const replyTarget = state.replyingTo;

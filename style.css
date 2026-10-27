@@ -375,5 +375,37 @@ html, body {
   box-shadow: 0.5px 0.5px 0px var(--ink);
 }
 
-
-
+/* Sleek Compact Game Stage for Mobile */
+@media (max-width: 640px) {
+  #game-stage-section {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  #game-card-container {
+    padding: 6px 10px;
+  }
+  #stage-pick-title {
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+  }
+  #choose-truth-btn, #choose-dare-btn {
+    padding: 5px 8px;
+  }
+  #choose-truth-btn span.font-title, #choose-dare-btn span.font-title {
+    font-size: 1.1rem;
+  }
+  #stage-waiting-prompt {
+    padding: 4px 0;
+  }
+  #waiting-prompt-title {
+    font-size: 1.05rem;
+  }
+  #active-card-text {
+    font-size: 1.15rem;
+    margin: 3px 0;
+    line-height: 1.25;
+  }
+  #active-card-instruction {
+    display: none;
+  }
+}
