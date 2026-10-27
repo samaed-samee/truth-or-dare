@@ -250,6 +250,37 @@
         sessionStorage.removeItem(STORAGE_KEY);
       }
 
+      function resetRoomSessionState() {
+        state.scores = { me: 0, partner: 0 };
+        state.turn = 'me';
+        state.gamePhase = 'pick';
+        state.selectedType = 'truth';
+        state.activeCard = null;
+        state.customDeck = [...DEFAULT_DECK];
+        state.chatHistory = [];
+        state.replyingTo = null;
+        state.partnerToken = null;
+        state.partnerOnline = false;
+        state.partnerTyping = false;
+        state.partnerMicOn = false;
+        state.partnerExplicitlyLeft = false;
+
+        const chatEl = document.getElementById('chat-stream');
+        if (chatEl) chatEl.innerHTML = '';
+
+        const replyBar = document.getElementById('reply-preview-bar');
+        if (replyBar) {
+          replyBar.classList.add('hidden');
+          replyBar.classList.remove('flex');
+        }
+        const chatInput = document.getElementById('chat-message-input');
+        if (chatInput) {
+          chatInput.value = '';
+          chatInput.style.height = 'auto';
+        }
+        clearSessionState();
+      }
+
       /* ----------------------------------------------------------
          4. UI ELEMENTS & HELPERS
       ---------------------------------------------------------- */
@@ -533,16 +564,24 @@
           if (isIntentionalLeave) return;
 
           if (err.type === 'unavailable-id' && state.role === 'host') {
-            // Host ID briefly still held after a quick reload; retry in 1.5s
+            // Someone else (partner) is already holding the host ID for this room!
+            // Switch to guest and connect to them
+            state.role = 'guest';
+            saveSessionState();
             setTimeout(() => {
               if (!isIntentionalLeave) startNetworkSession();
-            }, 1500);
+            }, 600);
             return;
           }
 
           if (err.type === 'peer-unavailable' && state.role === 'guest') {
-            updateConnectionBanner('Looking for your friend’s notebook... retrying...', true);
-            scheduleReconnect();
+            // Host is not online or has left. Promote this client to host so the room stays alive
+            // and the partner (or creator) can rejoin using the room code!
+            state.role = 'host';
+            saveSessionState();
+            setTimeout(() => {
+              if (!isIntentionalLeave) startNetworkSession();
+            }, 500);
             return;
           }
 
@@ -1095,8 +1134,17 @@
             updateMicUI();
             updateTypingUI();
             appendSystemEvent(`🚪 ${state.partnerName} left the notebook.`, 'leave');
-            updateConnectionBanner(`${state.partnerName} left the room. A new friend can join with the code.`, false);
+            updateConnectionBanner(`${state.partnerName} left the room. A friend can rejoin with code #${state.roomCode ? state.roomCode.slice(0, 4) + '…' : 'CODE'}`, false);
             showToast(`${state.partnerName} left the room`, '👋', '#FF8B8B');
+
+            // If we are guest and host left, promote to host so the host or friend can rejoin with the room code!
+            if (state.role === 'guest') {
+              state.role = 'host';
+              saveSessionState();
+              setTimeout(() => {
+                if (!isIntentionalLeave) startNetworkSession();
+              }, 400);
+            }
             break;
           }
         }
@@ -1634,7 +1682,7 @@
                 <span class="font-semibold text-[#2B2623]">${escapeHtml(isMe ? 'You' : msg.name)}</span>
                 <span>${escapeHtml(msg.time)}</span>
               </div>
-              <p class="text-base font-hand text-[#2B2623] leading-snug break-words">${escapeHtml(msg.text)}</p>
+              <p class="text-base font-hand text-[#2B2623] leading-snug break-words whitespace-pre-wrap">${escapeHtml(msg.text)}</p>
             </div>
           </div>
 
@@ -1922,17 +1970,13 @@
         const nameVal = validateNickname();
         if (!nameVal) return;
 
+        resetRoomSessionState();
+
         state.myName = nameVal;
         state.role = 'host';
         state.roomCode = generate10CharCode();
         state.partnerName = 'Waiting for friend...';
         state.partnerAvatar = 'waiting';
-        state.partnerToken = null;
-        state.partnerOnline = false;
-        state.scores = { me: 0, partner: 0 };
-        state.turn = 'me';
-        state.gamePhase = 'pick';
-        state.chatHistory = [];
 
         await CryptoEngine.initRoomKey(state.roomCode);
         enterRoomScreen();
@@ -1952,17 +1996,14 @@
           return;
         }
 
+        resetRoomSessionState();
+
         state.myName = nameVal;
         state.role = 'guest';
         state.roomCode = code;
-        state.partnerName = 'Connecting to host...';
+        state.partnerName = 'Connecting to friend...';
         state.partnerAvatar = 'waiting';
-        state.partnerToken = null;
-        state.partnerOnline = false;
-        state.scores = { me: 0, partner: 0 };
         state.turn = 'partner';
-        state.gamePhase = 'pick';
-        state.chatHistory = [];
 
         await CryptoEngine.initRoomKey(state.roomCode);
         enterRoomScreen();
@@ -2008,9 +2049,7 @@
         }, 120);
 
         state.roomCode = '';
-        state.partnerToken = null;
-        state.partnerOnline = false;
-        clearSessionState();
+        resetRoomSessionState();
 
         el.leaveConfirmModal.classList.add('hidden');
         el.roomScreen.classList.add('hidden');
@@ -2205,8 +2244,27 @@
         }, 1800);
       }
 
-      el.chatMessageInput.addEventListener('input', notifyMyTyping);
+      function adjustChatInputHeight() {
+        if (!el.chatMessageInput) return;
+        el.chatMessageInput.style.height = 'auto';
+        const newHeight = Math.min(el.chatMessageInput.scrollHeight, 96);
+        el.chatMessageInput.style.height = Math.max(newHeight, 38) + 'px';
+      }
+
+      el.chatMessageInput.addEventListener('input', () => {
+        notifyMyTyping();
+        adjustChatInputHeight();
+      });
       el.customPromptInput.addEventListener('input', notifyMyTyping);
+
+      el.chatMessageInput.addEventListener('keydown', (e) => {
+        // Desktop / Hardware keyboard: Enter sends message, Shift+Enter makes newline
+        const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        if (e.key === 'Enter' && !e.shiftKey && !isTouch) {
+          e.preventDefault();
+          el.chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      });
 
       el.chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -2214,6 +2272,7 @@
         if (!text) return;
 
         el.chatMessageInput.value = '';
+        el.chatMessageInput.style.height = 'auto';
         clearTimeout(myTypingTimer);
         amITyping = false;
         sendEncrypted({ type: 'typing', isTyping: false });

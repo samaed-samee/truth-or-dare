@@ -510,15 +510,16 @@
             📷
           </button>
 
-          <!-- Message Input -->
-          <input 
+          <!-- Message Input (Auto-expanding Multiline Textarea) -->
+          <textarea 
             id="chat-message-input" 
-            type="text" 
+            rows="1" 
             maxlength="500"
             autocomplete="off"
             placeholder="Write a note or answer..." 
-            class="sketch-input flex-1 min-w-0 px-3.5 py-1.5 sm:py-2 text-base font-hand"
-          />
+            class="sketch-input flex-1 min-w-0 px-3.5 py-1.5 sm:py-2 text-base font-hand resize-none overflow-y-auto leading-snug"
+            style="min-height: 38px; max-height: 96px;"
+          ></textarea>
 
           <!-- Send Message Button -->
           <button 
