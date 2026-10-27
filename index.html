@@ -373,7 +373,19 @@
             </div>
           </div>
 
-          <!-- STATE B: Write or Select Custom Prompt for Partner -->
+          <!-- STATE B1: Waiting for Partner to Write Card -->
+          <div id="stage-waiting-prompt" class="hidden text-center py-2 animate-pop">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FFF9DB] sketch-pill text-xs font-ui font-semibold mb-2">
+              <span class="animate-spin">🌀</span>
+              <span id="waiting-prompt-badge">YOU CHOSE TRUTH</span>
+            </div>
+            <p id="waiting-prompt-title" class="font-title text-2xl font-bold text-[#2B2623] leading-snug">
+              Waiting for friend to send your question... ✏️
+            </p>
+            <p class="text-xs text-[#6E655F] font-hand mt-1">Get ready to answer or complete the challenge!</p>
+          </div>
+
+          <!-- STATE B2: Write or Select Custom Prompt for Partner -->
           <div id="stage-compose-prompt" class="hidden space-y-2 animate-pop">
             <div class="flex items-center justify-between">
               <span id="compose-badge" class="px-2.5 py-0.5 text-xs font-ui font-bold uppercase border-2 border-[#2B2623] rounded-full bg-[#7EE0C6]">
@@ -421,9 +433,12 @@
               What is the funniest thing you have ever done?
             </p>
 
-            <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-dashed border-[#E0D9CC]">
-              <span class="text-xs text-[#6E655F] font-hand">Answer in chat, voice, or snap a photo!</span>
-              <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5 border-t border-dashed border-[#E0D9CC]">
+              <span id="active-card-instruction" class="text-xs text-[#6E655F] font-hand">Answer in chat, voice, or snap a photo!</span>
+              <div id="active-card-actions" class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                <span id="active-card-waiting-pill" class="hidden px-2.5 py-1 bg-[#FFF9DB] border border-[#2B2623] rounded-full text-[11px] font-ui font-semibold text-[#6E655F]">
+                  ⏳ Waiting for friend to verify
+                </span>
                 <button 
                   id="skip-card-btn" 
                   type="button"

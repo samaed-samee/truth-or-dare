@@ -291,6 +291,9 @@
         stagePickTitle: document.getElementById('stage-pick-title'),
         chooseTruthBtn: document.getElementById('choose-truth-btn'),
         chooseDareBtn: document.getElementById('choose-dare-btn'),
+        stageWaitingPrompt: document.getElementById('stage-waiting-prompt'),
+        waitingPromptBadge: document.getElementById('waiting-prompt-badge'),
+        waitingPromptTitle: document.getElementById('waiting-prompt-title'),
         stageComposePrompt: document.getElementById('stage-compose-prompt'),
         composeBadge: document.getElementById('compose-badge'),
         randomSavedPromptBtn: document.getElementById('random-saved-prompt-btn'),
@@ -301,6 +304,8 @@
         activeCardBadge: document.getElementById('active-card-badge'),
         activeCardTarget: document.getElementById('active-card-target'),
         activeCardText: document.getElementById('active-card-text'),
+        activeCardInstruction: document.getElementById('active-card-instruction'),
+        activeCardWaitingPill: document.getElementById('active-card-waiting-pill'),
         skipCardBtn: document.getElementById('skip-card-btn'),
         completeCardBtn: document.getElementById('complete-card-btn'),
 
@@ -982,47 +987,58 @@
           }
 
           case 'game_choice': {
-            // Partner chose Truth or Dare and wants us to write/pick a prompt for them, or vice versa
+            // Partner chose Truth or Dare!
+            // RULE: Whichever player taps Truth or Dare, the OTHER player sends the card!
             state.selectedType = data.choice;
+            const isTruth = data.choice === 'truth';
             appendSystemEvent(
-              `🎲 ${state.partnerName} picked ${data.choice.toUpperCase()}! Write a custom ${data.choice} for them above!`,
+              `🎲 ${state.partnerName} chose ${data.choice.toUpperCase()}! Write a ${data.choice} for them above!`,
               'game'
             );
-            state.turn = 'partner';
+            state.turn = 'partner'; // Partner is answering
             state.gamePhase = 'compose';
-            // Make sure stage is visible so user sees they need to write a prompt
             gameStageSection.classList.remove('hidden');
             renderGameStage();
-            showToast(`${state.partnerName} picked ${data.choice.toUpperCase()}! Write their prompt!`, '🎴', '#FFE46B');
+            el.customPromptInput.focus();
+            showToast(`${state.partnerName} chose ${data.choice.toUpperCase()}! Write their card 🃏`, '🎴', isTruth ? '#7EE0C6' : '#FF8B8B');
+            break;
+          }
+
+          case 'game_compose_cancel': {
+            state.gamePhase = 'pick';
+            renderGameStage();
+            showToast(`${state.partnerName} cancelled writing`, '↩️', '#FFE46B');
             break;
           }
 
           case 'game_card_sent': {
+            // Partner sent the card to me: I am the answerer ('me'), partner is the question asker ('partner')
             state.activeCard = {
               type: data.cardType,
               text: data.text,
-              target: data.target === 'me' ? 'partner' : 'me',
-              authorName: data.authorName
+              target: 'me',
+              author: 'partner',
+              authorName: data.authorName || state.partnerName
             };
             state.gamePhase = 'card';
             gameStageSection.classList.remove('hidden');
             renderGameStage();
             appendCardToChatStream(state.activeCard);
             saveSessionState();
+            showToast(`${state.partnerName} sent your ${data.cardType.toUpperCase()} card! 🃏`, '🃏', data.cardType === 'truth' ? '#7EE0C6' : '#FF8B8B');
             break;
           }
 
           case 'game_card_complete': {
-            if (data.completedBy === 'me') {
-              state.scores.partner += 1;
-            } else {
-              state.scores.me += 1;
-            }
-            state.turn = state.turn === 'me' ? 'partner' : 'me';
+            // RULE: Only the question asker can award points!
+            // Partner (question asker) verified my answer and awarded point to me!
+            state.scores.me += 1;
+            state.turn = 'me'; // Next round I choose Truth or Dare
             state.activeCard = null;
             state.gamePhase = 'pick';
             renderGameStage();
-            appendSystemEvent(`⭐ ${data.playerName} completed the ${data.cardType.toUpperCase()}! (+1 Star)`, 'complete');
+            appendSystemEvent(`⭐ You completed the ${data.cardType.toUpperCase()}! (+1 Star awarded by ${state.partnerName})`, 'complete');
+            showToast(`⭐ +1 Star awarded by ${state.partnerName}! Great job!`, '⭐', '#A8E6CF');
             saveSessionState();
             break;
           }
@@ -1033,6 +1049,7 @@
             state.gamePhase = 'pick';
             renderGameStage();
             appendSystemEvent(`🔄 ${data.playerName} skipped the card. Next turn!`, 'game');
+            showToast(`${data.playerName} skipped the card. Next turn!`, '🔄', '#FFE46B');
             saveSessionState();
             break;
           }
@@ -1145,34 +1162,74 @@
         }
 
         el.stagePickMode.classList.add('hidden');
+        if (el.stageWaitingPrompt) el.stageWaitingPrompt.classList.add('hidden');
         el.stageComposePrompt.classList.add('hidden');
         el.stageActiveCard.classList.add('hidden');
 
         if (state.gamePhase === 'pick') {
           el.stagePickMode.classList.remove('hidden');
-          el.stagePickTitle.textContent =
-            state.turn === 'me'
-              ? 'Your Turn! Pick Truth or Dare:'
-              : `Pick Truth or Dare or Challenge ${state.partnerOnline ? state.partnerName : 'Friend'}:`;
+          const isMyTurn = state.turn === 'me';
+          el.stagePickTitle.textContent = isMyTurn
+            ? `Your Turn (${state.myName})! Pick Truth or Dare:`
+            : `${state.partnerOnline ? state.partnerName : 'Friend'}'s Turn to pick Truth or Dare:`;
+        } else if (state.gamePhase === 'waiting_card') {
+          if (el.stageWaitingPrompt) {
+            el.stageWaitingPrompt.classList.remove('hidden');
+            const isTruth = state.selectedType === 'truth';
+            el.waitingPromptBadge.textContent = isTruth ? '💬 YOU CHOSE TRUTH' : '⚡ YOU CHOSE DARE';
+            el.waitingPromptBadge.style.backgroundColor = isTruth ? '#7EE0C6' : '#FF8B8B';
+            const partnerLabel = state.partnerOnline ? state.partnerName : 'friend';
+            el.waitingPromptTitle.textContent = `Waiting for ${partnerLabel} to write your card... ✏️`;
+          }
         } else if (state.gamePhase === 'compose') {
           el.stageComposePrompt.classList.remove('hidden');
           const isTruth = state.selectedType === 'truth';
           const targetLabel = state.partnerOnline ? state.partnerName : 'Friend';
           el.composeBadge.textContent = isTruth
-            ? `💬 Write a Custom Truth for ${targetLabel}`
-            : `⚡ Write a Custom Dare for ${targetLabel}`;
+            ? `💬 Write a TRUTH for ${targetLabel}`
+            : `⚡ Write a DARE for ${targetLabel}`;
           el.composeBadge.style.backgroundColor = isTruth ? '#7EE0C6' : '#FF8B8B';
           el.customPromptInput.placeholder = isTruth
-            ? `Ask ${targetLabel} a fun custom truth question...`
-            : `Give ${targetLabel} a playful custom dare...`;
+            ? `Ask ${targetLabel} an honest truth question...`
+            : `Challenge ${targetLabel} with a fun dare...`;
         } else if (state.gamePhase === 'card' && state.activeCard) {
           el.stageActiveCard.classList.remove('hidden');
           const isTruth = state.activeCard.type === 'truth';
           el.activeCardBadge.textContent = isTruth ? '💬 TRUTH CARD' : '⚡ DARE CARD';
           el.activeCardBadge.style.backgroundColor = isTruth ? '#7EE0C6' : '#FF8B8B';
-          const targetWho = state.activeCard.target === 'me' ? `For You (${state.myName})` : `For ${state.partnerName}`;
-          el.activeCardTarget.textContent = `${targetWho} • by ${state.activeCard.authorName}`;
+
+          const isTargetMe = state.activeCard.target === 'me';
+          const isAuthorMe = state.activeCard.author === 'me';
+
+          const targetLabel = isTargetMe ? `You (${state.myName})` : state.partnerName;
+          const authorLabel = isAuthorMe ? `You (${state.myName})` : state.partnerName;
+
+          el.activeCardTarget.textContent = `For ${targetLabel} • Asked by ${authorLabel}`;
           el.activeCardText.textContent = state.activeCard.text;
+
+          if (isAuthorMe) {
+            // Question Asker: ONLY question asker can award point!
+            if (el.activeCardInstruction) {
+              el.activeCardInstruction.textContent = `Waiting for ${state.partnerName} to answer. Verify & award point:`;
+            }
+            if (el.activeCardWaitingPill) el.activeCardWaitingPill.classList.add('hidden');
+            el.completeCardBtn.classList.remove('hidden');
+            el.completeCardBtn.textContent = `Done! +1 ⭐ for ${state.partnerName}`;
+            el.skipCardBtn.classList.remove('hidden');
+            el.skipCardBtn.textContent = `Skip 🔄`;
+          } else {
+            // Answerer: Cannot give point to themselves!
+            if (el.activeCardInstruction) {
+              el.activeCardInstruction.textContent = `Answer in chat, voice 🎙️, or snap 📷!`;
+            }
+            el.completeCardBtn.classList.add('hidden');
+            if (el.activeCardWaitingPill) {
+              el.activeCardWaitingPill.classList.remove('hidden');
+              el.activeCardWaitingPill.textContent = `⏳ Waiting for ${state.partnerName} to award star`;
+            }
+            el.skipCardBtn.classList.remove('hidden');
+            el.skipCardBtn.textContent = `Pass / Skip 🔄`;
+          }
         }
       }
 
@@ -1390,10 +1447,18 @@
         const cleanText = text.trim();
         if (!cleanText) return;
 
+        if (state.gamePhase === 'waiting_card') {
+          showToast(`Waiting for ${state.partnerName} to send your card!`, '⏳', '#FFE46B');
+          return;
+        }
+
+        // I wrote and sent this card to partner:
+        // author is 'me', target is 'partner'
         state.activeCard = {
           type: cardType,
           text: cleanText,
-          target: targetWho,
+          target: 'partner',
+          author: 'me',
           authorName: state.myName
         };
         state.gamePhase = 'card';
@@ -1405,7 +1470,6 @@
           type: 'game_card_sent',
           cardType,
           text: cleanText,
-          target: targetWho,
           authorName: state.myName
         });
       }
@@ -1582,25 +1646,30 @@
       });
 
       // Game Stage Actions
-      el.chooseTruthBtn.addEventListener('click', () => {
-        state.selectedType = 'truth';
-        state.gamePhase = 'compose';
+      function handleChooseTruthOrDare(type) {
+        state.selectedType = type;
+        // User who clicked enters waiting_card state! Partner will compose and send the card!
+        state.gamePhase = 'waiting_card';
         renderGameStage();
-        el.customPromptInput.focus();
-        sendEncrypted({ type: 'game_choice', choice: 'truth' });
-      });
 
-      el.chooseDareBtn.addEventListener('click', () => {
-        state.selectedType = 'dare';
-        state.gamePhase = 'compose';
-        renderGameStage();
-        el.customPromptInput.focus();
-        sendEncrypted({ type: 'game_choice', choice: 'dare' });
-      });
+        const typeUpper = type.toUpperCase();
+        appendSystemEvent(`🎲 You chose ${typeUpper}! Waiting for ${state.partnerOnline ? state.partnerName : 'friend'} to write your question...`, 'game');
+        showToast(`You chose ${typeUpper}! Waiting for ${state.partnerName}...`, type === 'truth' ? '💬' : '⚡', type === 'truth' ? '#7EE0C6' : '#FF8B8B');
+
+        sendEncrypted({
+          type: 'game_choice',
+          choice: type,
+          pickerName: state.myName
+        });
+      }
+
+      el.chooseTruthBtn.addEventListener('click', () => handleChooseTruthOrDare('truth'));
+      el.chooseDareBtn.addEventListener('click', () => handleChooseTruthOrDare('dare'));
 
       el.cancelComposeBtn.addEventListener('click', () => {
         state.gamePhase = 'pick';
         renderGameStage();
+        sendEncrypted({ type: 'game_compose_cancel' });
       });
 
       el.randomSavedPromptBtn.addEventListener('click', () => {
@@ -1630,29 +1699,37 @@
 
       el.completeCardBtn.addEventListener('click', () => {
         if (!state.activeCard) return;
-        const cType = state.activeCard.type;
-        if (state.activeCard.target === 'me') {
-          state.scores.me += 1;
-        } else {
-          state.scores.partner += 1;
+
+        // RULE: ONLY the person who asked the question can award points!
+        if (state.activeCard.author !== 'me') {
+          showToast('Only the person who asked the question can award points! ⭐', '⚠️', '#FF8B8B');
+          return;
         }
-        const completerName = state.activeCard.target === 'me' ? state.myName : state.partnerName;
-        state.turn = state.turn === 'me' ? 'partner' : 'me';
+
+        const cType = state.activeCard.type;
+        // Award point to the partner (who answered the question)
+        state.scores.partner += 1;
+        const winnerName = state.partnerName;
+
+        // Next turn goes to the partner who just answered!
+        state.turn = 'partner';
         state.activeCard = null;
         state.gamePhase = 'pick';
         renderGameStage();
-        appendSystemEvent(`⭐ ${completerName} completed the ${cType.toUpperCase()}! (+1 Star)`, 'complete');
+        appendSystemEvent(`⭐ ${winnerName} completed the ${cType.toUpperCase()}! (+1 Star awarded by ${state.myName})`, 'complete');
         saveSessionState();
 
         sendEncrypted({
           type: 'game_card_complete',
           cardType: cType,
-          completedBy: 'me',
-          playerName: completerName
+          winnerName: winnerName,
+          authorName: state.myName
         });
       });
 
       el.skipCardBtn.addEventListener('click', () => {
+        if (!state.activeCard) return;
+        const cType = state.activeCard.type;
         state.turn = state.turn === 'me' ? 'partner' : 'me';
         state.activeCard = null;
         state.gamePhase = 'pick';
