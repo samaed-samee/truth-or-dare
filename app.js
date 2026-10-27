@@ -926,6 +926,7 @@
           case 'profile_sync': {
             const previousName = state.partnerName;
             const isFirstJoin = previousName === 'Waiting for friend...' || previousName === 'Connecting to host...';
+            const wasExplicitlyLeft = Boolean(state.partnerExplicitlyLeft);
             state.partnerName = data.name || 'Friend';
             state.partnerAvatar = data.avatar || 'panda';
             state.partnerMicOn = Boolean(data.micOn);
@@ -963,11 +964,19 @@
             renderGameStage();
             saveSessionState();
 
-            if (isFirstJoin || !data.isReconnection) {
-              appendSystemEvent(`✨ ${state.partnerName} joined the notebook!`, 'join');
-              showToast(`${state.partnerName} joined the room!`, '🎉', '#A8E6CF');
-            } else {
-              showToast(`${state.partnerName} is back online!`, '✨', '#A8E6CF');
+            const isRejoin = Boolean(wasExplicitlyLeft || data.isReconnection || (!isFirstJoin && state.partnerName));
+            const now = Date.now();
+            const shouldAnnounce = !state._lastJoinAnnounceTime || (now - state._lastJoinAnnounceTime > 2000);
+
+            if (shouldAnnounce) {
+              state._lastJoinAnnounceTime = now;
+              if (isRejoin) {
+                appendSystemEvent(`✨ ${state.partnerName} rejoined the notebook!`, 'join');
+                showToast(`${state.partnerName} rejoined the notebook!`, '✨', '#A8E6CF');
+              } else {
+                appendSystemEvent(`✨ ${state.partnerName} joined the notebook!`, 'join');
+                showToast(`${state.partnerName} joined the room!`, '🎉', '#A8E6CF');
+              }
             }
             break;
           }
@@ -1571,6 +1580,7 @@
         let isSwiping = false;
         let isScrolling = false;
         let lastTap = 0;
+        let lastTouchReactionTime = 0;
 
         if (swipeTarget) {
           swipeTarget.addEventListener('touchstart', (e) => {
@@ -1590,11 +1600,11 @@
             const dy = touchY - touchStartY;
 
             if (!isSwiping) {
-              if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+              if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) {
                 isScrolling = true;
                 return;
               }
-              if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
+              if (dx > 8 && Math.abs(dx) > Math.abs(dy)) {
                 isSwiping = true;
               }
             }
@@ -1616,6 +1626,7 @@
               swipeTarget.style.transition = 'transform 0.22s cubic-bezier(0.2, 0, 0, 1)';
               swipeTarget.style.transform = 'translateX(0px)';
               wrapper.classList.remove('swipe-reply-active');
+              lastTap = 0;
 
               if (triggered) {
                 if (navigator.vibrate) try { navigator.vibrate(20); } catch (err) {}
@@ -1624,23 +1635,42 @@
                   name: isMe ? 'You' : msg.name,
                   text: msg.text || (msg.dataUrl ? '📷 Photo' : 'Card')
                 });
-                return;
               }
+              return;
             }
 
-            // Double tap heart detection on touch
+            if (isScrolling) {
+              lastTap = 0;
+              return;
+            }
+
+            // Verify finger didn't drag/scroll
+            const endTouch = e.changedTouches && e.changedTouches[0];
+            const moveDist = endTouch ? Math.hypot(endTouch.clientX - touchStartX, endTouch.clientY - touchStartY) : 0;
+            if (moveDist > 14) {
+              lastTap = 0;
+              return;
+            }
+
+            // Double tap heart detection on touch (generous 450ms window)
             const now = Date.now();
             const timeDiff = now - lastTap;
-            if (timeDiff > 25 && timeDiff < 320) {
+            if (timeDiff > 40 && timeDiff < 450) {
               lastTap = 0;
+              lastTouchReactionTime = now;
+              if (e.cancelable) e.preventDefault();
               toggleHeartReaction(msg.id, true);
             } else {
               lastTap = now;
             }
           });
 
-          // Desktop double click for heart reaction
+          // Desktop double click for heart reaction (prevent synthetic mobile dblclick double-toggle)
           swipeTarget.addEventListener('dblclick', (e) => {
+            if (Date.now() - lastTouchReactionTime < 700) {
+              e.preventDefault();
+              return;
+            }
             e.preventDefault();
             toggleHeartReaction(msg.id, true);
           });
