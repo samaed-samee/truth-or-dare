@@ -1708,8 +1708,8 @@
           <div class="msg-swipe-target max-w-[76%]">
             <div class="msg-content-box relative ${bubbleBg} sketch-box px-3.5 py-2">
               ${replyHtml}
-              <div class="flex items-center justify-between gap-3 text-[11px] font-ui text-[#6E655F] mb-0.5">
-                <span class="font-semibold text-[#2B2623]">${escapeHtml(isMe ? 'You' : msg.name)}</span>
+              <div class="flex items-center ${isMe ? 'justify-end' : 'justify-between'} gap-3 text-[11px] font-ui text-[#6E655F] mb-0.5">
+                ${!isMe ? `<span class="font-semibold text-[#2B2623]">${escapeHtml(msg.name)}</span>` : ''}
                 <span>${escapeHtml(msg.time)}</span>
               </div>
               <p class="text-base font-hand text-[#2B2623] leading-snug break-words whitespace-pre-wrap">${escapeHtml(msg.text)}</p>
@@ -1762,8 +1762,8 @@
           <div class="msg-swipe-target max-w-[240px]">
             <div class="msg-content-box polaroid-frame cursor-pointer group relative">
               ${replyHtml}
-              <div class="flex items-center justify-between text-[11px] font-ui text-[#6E655F] mb-1">
-                <span class="font-semibold text-[#2B2623]">📷 ${escapeHtml(isMe ? 'Your Snap' : msg.name)}</span>
+              <div class="flex items-center ${isMe ? 'justify-end' : 'justify-between'} text-[11px] font-ui text-[#6E655F] mb-1">
+                ${!isMe ? `<span class="font-semibold text-[#2B2623]">📷 ${escapeHtml(msg.name)}</span>` : ''}
                 <span>${escapeHtml(msg.time)}</span>
               </div>
               <img src="${msg.dataUrl}" alt="Shared photo" class="w-full max-h-48 object-cover rounded border border-[#2B2623]" />
