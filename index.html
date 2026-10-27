@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
+  <title>Doodle Truth or Dare — 2-Player Notebook</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- PeerJS for real-time connection -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <!-- Google Fonts for Hand-Drawn Sketch Aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fredoka:wght@400;500;600&family=Patrick+Hand&display=swap" rel="stylesheet">
+  <!-- Custom Sketch Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Hidden Audio Element for Live Voice Stream -->
+  <audio id="remote-audio" autoplay playsinline class="hidden"></audio>
+
+  <!-- Main Viewport-Locked App Container -->
+  <div id="app-viewport-shell">
+
+    <!-- ==========================================
+         SCREEN 1: LOBBY / NOTEBOOK COVER
+         ========================================== -->
+    <div id="lobby-screen" class="flex-1 flex flex-col justify-between overflow-y-auto p-3.5 sm:p-5 select-none">
+      
+      <!-- Top Notebook Header Banner -->
+      <div class="text-center pt-1 pb-2">
+        <div class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#FFE46B] sketch-pill text-xs font-ui font-medium mb-2 animate-doodle">
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#2B2623" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+          <span class="whitespace-nowrap">2-Player Secret Sketchbook</span>
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="#FF8B8B" stroke="#2B2623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.2L20 10.5l-5.6 2.3L12 18l-2.4-5.2L4 10.5l5.6-2.3L12 3z"/></svg>
+        </div>
+        <h1 class="font-title text-4xl sm:text-5xl font-bold tracking-tight text-[#2B2623] leading-none">
+          Truth <span class="text-[#FF6B6B] underline decoration-wavy decoration-2">or</span> Dare
+        </h1>
+        <p class="text-sm sm:text-base text-[#6E655F] mt-1">Draw cards, write custom dares, voice chat & share snaps!</p>
+      </div>
+
+      <!-- Main Notebook Setup Card -->
+      <div class="sketch-card bg-white p-4 sm:p-5 my-auto space-y-3.5 sketch-tape">
+        
+        <!-- Step 1: Pick Doodle Avatar & Name -->
+        <div>
+          <label class="block text-xs sm:text-sm font-ui font-semibold uppercase tracking-wider text-[#6E655F] mb-2">
+            1. Pick Your Doodle & Name
+          </label>
+          <div class="grid grid-cols-4 sm:grid-cols-8 gap-2.5 p-1.5 mb-2.5" id="avatar-picker">
+            <!-- Fox Doodle -->
+            <button type="button" data-avatar="fox" title="Fox Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-[#FFE46B] shrink-0 transition-transform scale-105 p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <path d="M6 8L13 15L23 15L30 8L28 24C28 28 23.5 31 18 31C12.5 31 8 28 8 24L6 8Z" fill="#FF9F68" stroke="#2B2623" stroke-width="2.4" stroke-linejoin="round"/>
+                <path d="M8 23C11 23 14 26 18 29C22 26 25 23 28 23C27 28 23 31 18 31C13 31 9 28 8 23Z" fill="#FFFDF9" stroke="#2B2623" stroke-width="2" stroke-linejoin="round"/>
+                <circle cx="13.5" cy="20" r="1.7" fill="#2B2623"/>
+                <circle cx="22.5" cy="20" r="1.7" fill="#2B2623"/>
+                <ellipse cx="18" cy="25" rx="2.2" ry="1.6" fill="#2B2623"/>
+              </svg>
+            </button>
+            <!-- Panda Doodle -->
+            <button type="button" data-avatar="panda" title="Panda Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <circle cx="9" cy="10" r="4.5" fill="#2B2623"/>
+                <circle cx="27" cy="10" r="4.5" fill="#2B2623"/>
+                <circle cx="18" cy="20" r="11" fill="#FFFDF9" stroke="#2B2623" stroke-width="2.4"/>
+                <ellipse cx="13.5" cy="19.5" rx="3.2" ry="2.6" transform="rotate(-15 13.5 19.5)" fill="#2B2623"/>
+                <ellipse cx="22.5" cy="19.5" rx="3.2" ry="2.6" transform="rotate(15 22.5 19.5)" fill="#2B2623"/>
+                <circle cx="13.8" cy="19" r="1" fill="#FFF"/>
+                <circle cx="22.2" cy="19" r="1" fill="#FFF"/>
+                <ellipse cx="18" cy="23.5" rx="2" ry="1.4" fill="#2B2623"/>
+              </svg>
+            </button>
+            <!-- Frog Doodle -->
+            <button type="button" data-avatar="frog" title="Frog Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <circle cx="11" cy="12" r="4.5" fill="#9AE6B4" stroke="#2B2623" stroke-width="2.3"/>
+                <circle cx="25" cy="12" r="4.5" fill="#9AE6B4" stroke="#2B2623" stroke-width="2.3"/>
+                <ellipse cx="18" cy="21" rx="11.5" ry="9" fill="#9AE6B4" stroke="#2B2623" stroke-width="2.4"/>
+                <circle cx="11" cy="12" r="1.8" fill="#2B2623"/>
+                <circle cx="25" cy="12" r="1.8" fill="#2B2623"/>
+                <circle cx="11.5" cy="22" r="2" fill="#FF9E9E"/>
+                <circle cx="24.5" cy="22" r="2" fill="#FF9E9E"/>
+                <path d="M13.5 22.5Q18 26 22.5 22.5" stroke="#2B2623" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <!-- Cat Doodle -->
+            <button type="button" data-avatar="cat" title="Cat Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <path d="M7 9L13 14H23L29 9L28 22C28 27 23.5 30 18 30C12.5 30 8 27 8 22L7 9Z" fill="#FFD6A5" stroke="#2B2623" stroke-width="2.4" stroke-linejoin="round"/>
+                <circle cx="13.5" cy="20" r="1.7" fill="#2B2623"/>
+                <circle cx="22.5" cy="20" r="1.7" fill="#2B2623"/>
+                <polygon points="18,23.5 16,21.5 20,21.5" fill="#FF8B8B"/>
+                <path d="M6 21H11M6 24H11M25 21H30M25 24H30" stroke="#2B2623" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </button>
+            <!-- Bunny Doodle -->
+            <button type="button" data-avatar="bunny" title="Bunny Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <rect x="10.5" y="4" width="5" height="13" rx="2.5" fill="#FFFDF9" stroke="#2B2623" stroke-width="2.2"/>
+                <rect x="20.5" y="4" width="5" height="13" rx="2.5" fill="#FFFDF9" stroke="#2B2623" stroke-width="2.2"/>
+                <circle cx="18" cy="22" r="9.5" fill="#FFFDF9" stroke="#2B2623" stroke-width="2.4"/>
+                <circle cx="14" cy="21" r="1.6" fill="#2B2623"/>
+                <circle cx="22" cy="21" r="1.6" fill="#2B2623"/>
+                <ellipse cx="18" cy="23.5" rx="1.8" ry="1.3" fill="#FF8B8B"/>
+              </svg>
+            </button>
+            <!-- Lion Doodle -->
+            <button type="button" data-avatar="lion" title="Lion Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <circle cx="18" cy="19" r="12.5" fill="#F6AD55" stroke="#2B2623" stroke-width="2.4" stroke-dasharray="4 2"/>
+                <circle cx="18" cy="19" r="8.8" fill="#FFE46B" stroke="#2B2623" stroke-width="2.2"/>
+                <circle cx="14.5" cy="18" r="1.6" fill="#2B2623"/>
+                <circle cx="21.5" cy="18" r="1.6" fill="#2B2623"/>
+                <ellipse cx="18" cy="21" rx="2" ry="1.4" fill="#2B2623"/>
+              </svg>
+            </button>
+            <!-- Koala Doodle -->
+            <button type="button" data-avatar="koala" title="Koala Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <circle cx="7.5" cy="15" r="5" fill="#CBD5E1" stroke="#2B2623" stroke-width="2.2"/>
+                <circle cx="28.5" cy="15" r="5" fill="#CBD5E1" stroke="#2B2623" stroke-width="2.2"/>
+                <circle cx="18" cy="20" r="10" fill="#E2E8F0" stroke="#2B2623" stroke-width="2.4"/>
+                <ellipse cx="18" cy="21" rx="3" ry="4" fill="#2B2623"/>
+                <circle cx="13" cy="18.5" r="1.5" fill="#2B2623"/>
+                <circle cx="23" cy="18.5" r="1.5" fill="#2B2623"/>
+              </svg>
+            </button>
+            <!-- Octopus Doodle -->
+            <button type="button" data-avatar="octopus" title="Octopus Doodle" class="avatar-btn sketch-pill w-11 h-11 mx-auto flex items-center justify-center bg-white shrink-0 transition-transform p-1.5">
+              <svg class="w-full h-full overflow-visible" viewBox="0 0 36 36" fill="none">
+                <path d="M8 20C8 13.5 12.5 9 18 9C23.5 9 28 13.5 28 20V26C28 28 26 29 24.5 27.5C23 26 22 28.5 20 28.5C18 28.5 18 26 16 28.5C14 28.5 13 26 11.5 27.5C10 29 8 28 8 26V20Z" fill="#FBB6CE" stroke="#2B2623" stroke-width="2.3" stroke-linejoin="round"/>
+                <circle cx="14" cy="18.5" r="1.7" fill="#2B2623"/>
+                <circle cx="22" cy="18.5" r="1.7" fill="#2B2623"/>
+                <path d="M15.5 22Q18 24 20.5 22" stroke="#2B2623" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <input 
+            id="player-name-input" 
+            type="text" 
+            maxlength="18" 
+            placeholder="Write your nickname..." 
+            class="sketch-input w-full px-3.5 py-2 text-lg font-hand"
+          />
+        </div>
+
+        <!-- Divider -->
+        <div class="border-t-2 border-dashed border-[#E0D9CC]"></div>
+
+        <!-- Step 2: Create a New 2-Player Room -->
+        <div class="bg-[#FFF9DB] p-3.5 sketch-box space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-ui font-semibold text-sm text-[#2B2623] flex items-center gap-1.5">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FFE46B" stroke="#2B2623" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+              <span>Start a Fresh Notebook</span>
+            </span>
+            <span class="text-[11px] px-2.5 py-0.5 bg-white border border-[#2B2623] rounded-full font-ui font-medium whitespace-nowrap shrink-0">Max 2 Players</span>
+          </div>
+          <p class="text-sm text-[#6E655F] leading-snug">
+            Create a private 10-letter room code and share it with your friend.
+          </p>
+          <button 
+            id="create-room-btn" 
+            type="button"
+            class="sketch-btn w-full py-2.5 px-4 bg-[#7EE0C6] hover:bg-[#6AD6B9] text-[#2B2623] font-ui font-semibold text-sm sm:text-base flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FFE46B" stroke="#2B2623" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.2L20 10.5l-5.6 2.3L12 18l-2.4-5.2L4 10.5l5.6-2.3L12 3z"/></svg>
+            <span>Create 10-Digit Room</span>
+          </button>
+        </div>
+
+        <!-- OR Divider -->
+        <div class="flex items-center gap-3">
+          <div class="h-0.5 flex-1 bg-[#E0D9CC]"></div>
+          <span class="font-title text-xl text-[#6E655F] whitespace-nowrap px-1">or join friend</span>
+          <div class="h-0.5 flex-1 bg-[#E0D9CC]"></div>
+        </div>
+
+        <!-- Step 3: Join with 10-Character Room Code -->
+        <div class="bg-[#F6F2FF] p-3.5 sketch-box-alt space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-ui font-semibold text-sm text-[#2B2623] flex items-center gap-1.5">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="#FFE46B" stroke="#2B2623" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+              <span>Enter 10-Character Code</span>
+            </span>
+            <span id="code-char-counter" class="text-xs font-ui font-semibold text-[#6E655F] whitespace-nowrap shrink-0">0 / 10</span>
+          </div>
+          <div class="flex items-stretch gap-2">
+            <input 
+              id="join-code-input" 
+              type="text" 
+              maxlength="10" 
+              placeholder="E.G. K9M4P2X7LA" 
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              class="sketch-input flex-1 min-w-0 px-3 py-2 text-base sm:text-lg font-ui font-semibold tracking-widest uppercase text-center"
+            />
+            <button 
+              id="join-room-btn" 
+              type="button"
+              class="sketch-btn px-4 py-2 bg-[#FF8B8B] hover:bg-[#FF7676] text-[#2B2623] font-ui font-semibold text-sm sm:text-base shrink-0 whitespace-nowrap flex items-center justify-center"
+            >
+              Join →
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Note -->
+      <div class="text-center text-xs text-[#6E655F] py-1 font-ui">
+        Made for two friends • Custom prompts • Voice & Instant Snaps
+      </div>
+    </div>
+
+
+    <!-- ==========================================
+         SCREEN 2: ACTIVE 2-PLAYER GAME & CHAT ROOM
+         ========================================== -->
+    <div id="room-screen" class="hidden flex-1 flex flex-col overflow-hidden h-full">
+
+      <!-- 1. PINNED TOP HEADER (Never leaves viewport when mobile keyboard opens) -->
+      <header id="room-header" class="shrink-0 bg-[#FDFBF7] border-b-[2.5px] border-[#2B2623] px-2.5 py-2 z-30 shadow-sm">
+        <div class="flex items-center justify-between gap-1.5">
+          
+          <!-- Left: Partner Info + Live Presence + Mic & Typing Status -->
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <!-- Partner Avatar with Online Dot -->
+            <div class="relative shrink-0">
+              <div id="partner-avatar-box" class="w-10 h-10 sketch-pill bg-[#FFE46B] flex items-center justify-center text-xl select-none">
+                ⏳
+              </div>
+              <span id="partner-online-dot" class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#2B2623]" title="Status"></span>
+            </div>
+
+            <!-- Partner Name & Live Status Subtext -->
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <h2 id="partner-name-display" class="font-ui font-semibold text-sm sm:text-base text-[#2B2623] truncate">
+                  Waiting for friend...
+                </h2>
+                <!-- Partner Mic Status Pill -->
+                <span id="partner-mic-badge" class="hidden items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-ui font-medium rounded-full border border-[#2B2623] bg-gray-100 shrink-0">
+                  <span id="partner-mic-icon">🔇</span>
+                </span>
+              </div>
+
+              <!-- Dynamic Sub-status: Online / Typing / Reconnecting / Left -->
+              <div class="flex items-center gap-1.5 text-xs leading-tight">
+                <span id="partner-status-text" class="text-[#6E655F] truncate">Share the 10-letter code</span>
+                <span id="header-typing-badge" class="hidden items-center gap-1 text-[#2B2623] font-semibold bg-[#FFE46B] px-1.5 rounded-full border border-[#2B2623]">
+                  <span class="animate-pencil">✏️</span> typing...
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Controls (Room Code, My Mic Toggle, Collapse Game Stage, Leave) -->
+          <div class="flex items-center gap-1.5 shrink-0">
+            
+            <!-- Room Code Copy Pill -->
+            <button 
+              id="copy-code-pill" 
+              type="button"
+              title="Tap to copy 10-character room code"
+              class="sketch-btn px-2 py-1 bg-[#FFF9DB] text-xs font-ui font-semibold flex items-center gap-1"
+            >
+              <span id="header-room-code" class="tracking-wider">----------</span>
+              <span>📋</span>
+            </button>
+
+            <!-- Live Voice Mic On/Off Button -->
+            <button 
+              id="mic-toggle-btn" 
+              type="button"
+              title="Toggle Live Voice Mic On or Off"
+              class="sketch-btn w-9 h-9 flex items-center justify-center bg-white text-base relative"
+            >
+              <span id="my-mic-icon">🎙️</span>
+              <span id="my-mic-slash" class="absolute w-6 h-0.5 bg-[#FF5252] rotate-45 rounded-full"></span>
+            </button>
+
+            <!-- Toggle Game Stage Visibility (Helpful when chatting heavily) -->
+            <button 
+              id="toggle-stage-btn" 
+              type="button"
+              title="Show/Hide Game Card Area"
+              class="sketch-btn w-9 h-9 flex items-center justify-center bg-[#D5C6FF] text-base"
+            >
+              <span id="toggle-stage-icon">🎴</span>
+            </button>
+
+            <!-- Leave Room Button -->
+            <button 
+              id="leave-room-btn" 
+              type="button"
+              title="Leave Notebook"
+              class="sketch-btn w-9 h-9 flex items-center justify-center bg-[#FFE3E3] text-sm"
+            >
+              🚪
+            </button>
+          </div>
+        </div>
+
+        <!-- Connection / Reconnection Banner (Shown only when waiting or recovering from minimize) -->
+        <div id="connection-banner" class="mt-1.5 px-2.5 py-1 bg-[#FFF3CD] border-2 border-[#2B2623] rounded-xl flex items-center justify-between text-xs font-ui">
+          <div class="flex items-center gap-1.5 truncate">
+            <span id="banner-spinner" class="animate-spin">🌀</span>
+            <span id="banner-text" class="truncate">Waiting for your friend to join with code...</span>
+          </div>
+          <button id="banner-share-btn" type="button" class="ml-2 px-2 py-0.5 bg-white border border-[#2B2623] rounded-md font-semibold shrink-0">
+            Copy Code
+          </button>
+        </div>
+      </header>
+
+      <!-- 2. INTERACTIVE TRUTH OR DARE SKETCHBOOK STAGE (Collapsible & Compact-ready) -->
+      <section id="game-stage-section" class="shrink-0 px-3 pt-2 pb-1.5 border-b-2 border-dashed border-[#D8D0C2] bg-[#FAF6EE]/90 transition-all duration-200">
+        
+        <!-- Mini Score & Turn Bar -->
+        <div class="flex items-center justify-between mb-1.5 text-xs font-ui">
+          <div class="flex items-center gap-1.5">
+            <span id="turn-indicator-pill" class="px-2.5 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623]">
+              🎲 Pick a Turn!
+            </span>
+            <button id="spin-pencil-btn" type="button" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full hover:bg-amber-50 active:translate-y-0.5" title="Spin pencil to pick random turn">
+              ✏️ Spin Pencil
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span id="score-display" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full font-medium">
+              ⭐ 0 — 0
+            </span>
+            <button id="open-custom-deck-btn" type="button" class="px-2 py-0.5 bg-[#D5C6FF] border border-[#2B2623] rounded-full font-semibold">
+              + Custom Prompts
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Game Card Container -->
+        <div id="game-card-container" class="sketch-box bg-white p-3 relative overflow-hidden">
+          
+          <!-- STATE A: Choose Truth or Dare -->
+          <div id="stage-pick-mode" class="text-center py-1">
+            <p id="stage-pick-title" class="font-title text-2xl font-bold text-[#2B2623] mb-2 leading-tight">
+              Choose Truth or Dare!
+            </p>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button 
+                id="choose-truth-btn" 
+                type="button"
+                class="sketch-btn py-2.5 px-3 bg-[#7EE0C6] hover:bg-[#6BD4B8] flex flex-col items-center justify-center"
+              >
+                <span class="font-title text-2xl font-bold leading-none">TRUTH 💬</span>
+                <span class="text-[11px] font-ui text-[#2B2623]/80 mt-0.5">Honest answer</span>
+              </button>
+              <button 
+                id="choose-dare-btn" 
+                type="button"
+                class="sketch-btn py-2.5 px-3 bg-[#FF8B8B] hover:bg-[#FF7878] flex flex-col items-center justify-center"
+              >
+                <span class="font-title text-2xl font-bold leading-none">DARE ⚡</span>
+                <span class="text-[11px] font-ui text-[#2B2623]/80 mt-0.5">Fun challenge</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- STATE B: Write or Select Custom Prompt for Partner -->
+          <div id="stage-compose-prompt" class="hidden space-y-2 animate-pop">
+            <div class="flex items-center justify-between">
+              <span id="compose-badge" class="px-2.5 py-0.5 text-xs font-ui font-bold uppercase border-2 border-[#2B2623] rounded-full bg-[#7EE0C6]">
+                Write a Custom Truth
+              </span>
+              <div class="flex items-center gap-1">
+                <button id="random-saved-prompt-btn" type="button" class="text-xs font-ui px-2 py-0.5 bg-[#FFF9DB] border border-[#2B2623] rounded-full">
+                  🎲 Idea from Deck
+                </button>
+                <button id="cancel-compose-btn" type="button" class="text-xs font-ui px-2 py-0.5 bg-gray-100 border border-[#2B2623] rounded-full">
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <input 
+                id="custom-prompt-input" 
+                type="text" 
+                maxlength="160"
+                placeholder="Type your custom question or fun dare..." 
+                class="sketch-input flex-1 px-3 py-1.5 text-base font-hand"
+              />
+              <button 
+                id="send-prompt-card-btn" 
+                type="button"
+                class="sketch-btn px-3.5 py-1.5 bg-[#FFE46B] font-ui font-semibold text-sm shrink-0"
+              >
+                Send Card 🃏
+              </button>
+            </div>
+          </div>
+
+          <!-- STATE C: Active Truth or Dare Card on the Table -->
+          <div id="stage-active-card" class="hidden animate-card-flip">
+            <div class="flex items-center justify-between mb-1">
+              <span id="active-card-badge" class="px-2.5 py-0.5 text-xs font-ui font-bold uppercase border-2 border-[#2B2623] rounded-full bg-[#7EE0C6]">
+                TRUTH CARD
+              </span>
+              <span id="active-card-target" class="text-xs font-ui text-[#6E655F]">
+                For Player
+              </span>
+            </div>
+
+            <p id="active-card-text" class="font-title text-2xl sm:text-3xl font-bold text-[#2B2623] leading-snug my-1.5 break-words">
+              What is the funniest thing you have ever done?
+            </p>
+
+            <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-dashed border-[#E0D9CC]">
+              <span class="text-xs text-[#6E655F] font-hand">Answer in chat, voice, or snap a photo!</span>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button 
+                  id="skip-card-btn" 
+                  type="button"
+                  class="sketch-btn px-2.5 py-1 bg-white text-xs font-ui font-medium"
+                >
+                  Skip 🔄
+                </button>
+                <button 
+                  id="complete-card-btn" 
+                  type="button"
+                  class="sketch-btn px-3 py-1 bg-[#A8E6CF] text-xs font-ui font-semibold"
+                >
+                  Done! +1 ⭐
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- 3. SCROLLABLE NOTEBOOK CHAT & PHOTO STREAM -->
+      <main id="chat-stream" class="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+        <!-- Welcome Sketch Note -->
+        <div class="text-center my-2">
+          <div class="inline-block px-3.5 py-1.5 bg-[#FFF9DB] sketch-box text-xs text-[#6E655F] max-w-[90%]">
+            📒 Welcome to your private 2-player notebook! Draw a Truth or Dare card above, turn on your mic 🎙️, or send messages & photos below.
+          </div>
+        </div>
+      </main>
+
+      <!-- 4. FLOATING TYPING INDICATOR BAR (Above Input) -->
+      <div id="chat-typing-row" class="hidden shrink-0 px-4 py-1 bg-transparent pointer-events-none">
+        <div class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full text-xs font-ui shadow-sm animate-pop">
+          <span class="animate-pencil">✏️</span>
+          <span id="chat-typing-label">Friend is scribbling a note...</span>
+        </div>
+      </div>
+
+      <!-- 5. PINNED BOTTOM INPUT BAR (Chat + Image Sharing + Quick Card) -->
+      <footer class="shrink-0 bg-[#FDFBF7] border-t-[2.5px] border-[#2B2623] p-2 z-20">
+        <form id="chat-form" class="flex items-center gap-1.5">
+          
+          <!-- Hidden File Input for Image Sharing -->
+          <input id="image-upload-input" type="file" accept="image/*" class="hidden" />
+
+          <!-- Share Photo Button -->
+          <button 
+            id="share-photo-btn" 
+            type="button"
+            title="Share a Photo"
+            class="sketch-btn w-10 h-10 shrink-0 bg-[#FFE46B] flex items-center justify-center text-lg"
+          >
+            📷
+          </button>
+
+          <!-- Message Input -->
+          <input 
+            id="chat-message-input" 
+            type="text" 
+            maxlength="500"
+            autocomplete="off"
+            placeholder="Write a note or answer..." 
+            class="sketch-input flex-1 min-w-0 px-3.5 py-2 text-base font-hand"
+          />
+
+          <!-- Send Message Button -->
+          <button 
+            id="send-msg-btn" 
+            type="submit"
+            class="sketch-btn px-4 h-10 shrink-0 bg-[#7EE0C6] hover:bg-[#6AD6B9] font-ui font-semibold text-sm flex items-center justify-center gap-1"
+          >
+            <span>Send</span>
+            <span>➤</span>
+          </button>
+        </form>
+      </footer>
+
+    </div>
+
+    <!-- ==========================================
+         MODAL 1: CUSTOM PROMPTS NOTEBOOK DECK
+         ========================================== -->
+    <div id="custom-deck-modal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4">
+      <div class="sketch-card bg-[#FDFBF7] w-full max-w-md max-h-[82vh] flex flex-col p-4 animate-pop">
+        <div class="flex items-center justify-between pb-2 border-b-2 border-[#2B2623]">
+          <h3 class="font-title text-3xl font-bold">✏️ Custom Prompt Deck</h3>
+          <button id="close-deck-modal-btn" type="button" class="sketch-btn w-8 h-8 bg-white font-ui font-bold">✕</button>
+        </div>
+
+        <p class="text-sm text-[#6E655F] mt-2">
+          Add your own clean, fun Truths & Dares to this notebook or tap any prompt to play it immediately!
+        </p>
+
+        <!-- Add New Custom Prompt Form -->
+        <div class="mt-3 p-2.5 bg-white sketch-box space-y-2">
+          <div class="flex gap-2">
+            <select id="new-deck-type" class="sketch-input px-2.5 py-1.5 text-sm font-ui font-semibold bg-[#FFF9DB]">
+              <option value="truth">TRUTH 💬</option>
+              <option value="dare">DARE ⚡</option>
+            </select>
+            <input 
+              id="new-deck-text" 
+              type="text" 
+              maxlength="140" 
+              placeholder="Write your custom truth or dare..." 
+              class="sketch-input flex-1 px-3 py-1.5 text-base font-hand"
+            />
+          </div>
+          <button id="add-to-deck-btn" type="button" class="sketch-btn w-full py-1.5 bg-[#7EE0C6] font-ui font-semibold text-sm">
+            + Save to Our Notebook Deck
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex gap-2 mt-3">
+          <button type="button" data-filter="all" class="deck-filter-btn sketch-pill px-3 py-0.5 text-xs font-ui font-semibold bg-[#FFE46B]">All</button>
+          <button type="button" data-filter="truth" class="deck-filter-btn sketch-pill px-3 py-0.5 text-xs font-ui font-semibold bg-white">Truths 💬</button>
+          <button type="button" data-filter="dare" class="deck-filter-btn sketch-pill px-3 py-0.5 text-xs font-ui font-semibold bg-white">Dares ⚡</button>
+        </div>
+
+        <!-- Scrollable List of Prompts -->
+        <div id="deck-list-container" class="flex-1 overflow-y-auto mt-2 space-y-2 pr-1"></div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 2: FULLSCREEN PHOTO VIEWER
+         ========================================== -->
+    <div id="photo-lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/75 flex flex-col items-center justify-center p-4">
+      <div class="polaroid-frame max-w-full max-h-[80vh] flex flex-col items-center bg-white p-3 animate-pop">
+        <img id="lightbox-img" src="" alt="Shared Snap" class="max-w-full max-h-[68vh] object-contain rounded border border-[#2B2623]" />
+        <p id="lightbox-caption" class="font-title text-2xl mt-2 text-[#2B2623]"></p>
+      </div>
+      <button id="close-lightbox-btn" type="button" class="sketch-btn mt-4 px-5 py-2 bg-[#FFE46B] font-ui font-semibold">
+        Close Photo ✕
+      </button>
+    </div>
+
+    <!-- ==========================================
+         MODAL 3: LEAVE ROOM CONFIRMATION
+         ========================================== -->
+    <div id="leave-confirm-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div class="sketch-card bg-[#FDFBF7] w-full max-w-xs p-4 text-center space-y-3 animate-pop">
+        <div class="text-4xl">👋</div>
+        <h3 class="font-title text-3xl font-bold">Leave this Notebook?</h3>
+        <p class="text-sm text-[#6E655F]">
+          Your friend will see that you left the room. Are you sure you want to close this session?
+        </p>
+        <div class="flex gap-2 pt-1">
+          <button id="cancel-leave-btn" type="button" class="sketch-btn flex-1 py-2 bg-white font-ui font-semibold text-sm">
+            Stay Here
+          </button>
+          <button id="confirm-leave-btn" type="button" class="sketch-btn flex-1 py-2 bg-[#FF8B8B] font-ui font-semibold text-sm">
+            Yes, Leave
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         FLOATING TOAST NOTIFICATION
+         ========================================== -->
+    <div id="toast-container" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-1.5 w-[90%] max-w-xs"></div>
+
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
