@@ -1148,17 +1148,20 @@
       }
 
       function renderGameStage() {
-        // Scoreboard
-        el.scoreDisplay.textContent = `⭐ You ${state.scores.me} — ${state.scores.partner} ${state.partnerOnline ? state.partnerName : 'Friend'}`;
+        // Scoreboard - stable mini format (never balloons or shrinks)
+        el.scoreDisplay.textContent = `⭐ ${state.scores.me} : ${state.scores.partner}`;
+        el.scoreDisplay.title = `Score: You (${state.scores.me}) — ${state.partnerOnline ? state.partnerName : 'Friend'} (${state.scores.partner})`;
 
-        // Turn Indicator
+        // Turn Indicator - stable mini format
         if (state.turn === 'me') {
-          el.turnIndicatorPill.textContent = `🎯 Your Turn (${state.myName})`;
-          el.turnIndicatorPill.className = 'px-2.5 py-0.5 bg-[#7EE0C6] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623]';
+          el.turnIndicatorPill.textContent = `🎯 Your Turn`;
+          el.turnIndicatorPill.className = 'px-2 py-0.5 bg-[#7EE0C6] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623] text-xs whitespace-nowrap shrink-0 max-w-[115px] truncate';
+          el.turnIndicatorPill.title = `Your Turn (${state.myName})`;
         } else {
           const pName = state.partnerOnline ? state.partnerName : 'Friend';
           el.turnIndicatorPill.textContent = `🎲 ${pName}'s Turn`;
-          el.turnIndicatorPill.className = 'px-2.5 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623]';
+          el.turnIndicatorPill.className = 'px-2 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623] text-xs whitespace-nowrap shrink-0 max-w-[115px] truncate';
+          el.turnIndicatorPill.title = `${pName}'s Turn`;
         }
 
         el.stagePickMode.classList.add('hidden');

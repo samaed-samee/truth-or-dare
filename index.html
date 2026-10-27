@@ -324,23 +324,23 @@
       <!-- 2. INTERACTIVE TRUTH OR DARE SKETCHBOOK STAGE (Collapsible & Compact-ready) -->
       <section id="game-stage-section" class="shrink-0 px-3 pt-2 pb-1.5 border-b-2 border-dashed border-[#D8D0C2] bg-[#FAF6EE]/90 transition-all duration-200">
         
-        <!-- Mini Score & Turn Bar -->
-        <div class="flex items-center justify-between mb-1.5 text-xs font-ui">
-          <div class="flex items-center gap-1.5">
-            <span id="turn-indicator-pill" class="px-2.5 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623]">
-              🎲 Pick a Turn!
+        <!-- Mini Score & Turn Bar (Stable, Compact Single-Line Row) -->
+        <div class="flex items-center justify-between mb-1.5 text-xs font-ui min-h-[28px] overflow-hidden gap-1.5 select-none">
+          <div class="flex items-center gap-1.5 shrink min-w-0">
+            <span id="turn-indicator-pill" class="px-2 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623] text-xs whitespace-nowrap truncate max-w-[115px]">
+              🎲 Pick Turn
             </span>
-            <button id="spin-pencil-btn" type="button" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full hover:bg-amber-50 active:translate-y-0.5" title="Spin pencil to pick random turn">
-              ✏️ Spin Pencil
+            <button id="spin-pencil-btn" type="button" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full hover:bg-amber-50 active:translate-y-0.5 text-xs whitespace-nowrap shrink-0" title="Spin pencil to pick random turn">
+              ✏️ Spin
             </button>
           </div>
 
-          <div class="flex items-center gap-2">
-            <span id="score-display" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full font-medium">
-              ⭐ 0 — 0
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span id="score-display" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full font-semibold text-xs whitespace-nowrap shrink-0 tracking-wide" title="Score: You : Friend">
+              ⭐ 0 : 0
             </span>
-            <button id="open-custom-deck-btn" type="button" class="px-2 py-0.5 bg-[#D5C6FF] border border-[#2B2623] rounded-full font-semibold">
-              + Custom Prompts
+            <button id="open-custom-deck-btn" type="button" class="px-2 py-0.5 bg-[#D5C6FF] border border-[#2B2623] rounded-full font-semibold text-xs whitespace-nowrap shrink-0 hover:bg-[#C8B6FF] active:translate-y-0.5" title="Custom Prompts Deck">
+              + Deck
             </button>
           </div>
         </div>
