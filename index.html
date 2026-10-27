@@ -497,8 +497,9 @@
         <!-- Chat Input Form (Optimized Clean Mobile Toolbar) -->
         <form id="chat-form" class="flex items-center gap-1.5 p-2">
           
-          <!-- Hidden File Input for Image Sharing -->
-          <input id="image-upload-input" type="file" accept="image/*" class="hidden" />
+          <!-- Hidden File Inputs: Camera & Gallery -->
+          <input id="camera-capture-input" type="file" accept="image/*" capture="environment" class="hidden" />
+          <input id="gallery-upload-input" type="file" accept="image/*" class="hidden" />
 
           <!-- Share Photo Button -->
           <button 
@@ -582,16 +583,105 @@
     </div>
 
     <!-- ==========================================
-         MODAL 2: FULLSCREEN PHOTO VIEWER
+         MODAL 2: FULLSCREEN PHOTO VIEWER (E2EE & View-Once Safe)
          ========================================== -->
-    <div id="photo-lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/75 flex flex-col items-center justify-center p-4">
-      <div class="polaroid-frame max-w-full max-h-[80vh] flex flex-col items-center bg-white p-3 animate-pop">
-        <img id="lightbox-img" src="" alt="Shared Snap" class="max-w-full max-h-[68vh] object-contain rounded border border-[#2B2623]" />
-        <p id="lightbox-caption" class="font-title text-2xl mt-2 text-[#2B2623]"></p>
+    <div id="photo-lightbox-modal" class="hidden fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-3 sm:p-4 select-none">
+      <div id="lightbox-view-once-banner" class="hidden px-3.5 py-1.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full text-xs font-ui font-bold mb-2 shadow-md animate-pop flex items-center gap-1.5">
+        <span>👁️</span>
+        <span>VIEW ONCE PHOTO — Disappears immediately after closing</span>
       </div>
-      <button id="close-lightbox-btn" type="button" class="sketch-btn mt-4 px-5 py-2 bg-[#FFE46B] font-ui font-semibold">
+      <div class="polaroid-frame max-w-full max-h-[80vh] flex flex-col items-center bg-white p-3 animate-pop">
+        <img 
+          id="lightbox-img" 
+          src="" 
+          alt="Shared Snap" 
+          draggable="false" 
+          oncontextmenu="return false;"
+          class="max-w-full max-h-[68vh] object-contain rounded border border-[#2B2623] pointer-events-none select-none" 
+        />
+        <p id="lightbox-caption" class="font-title text-2xl mt-2 text-[#2B2623] text-center"></p>
+      </div>
+      <button id="close-lightbox-btn" type="button" class="sketch-btn mt-4 px-6 py-2.5 bg-[#FFE46B] hover:bg-[#FFDC4B] font-ui font-bold text-sm shadow-md active:scale-95">
         Close Photo ✕
       </button>
+    </div>
+
+    <!-- ==========================================
+         MODAL 2B: PHOTO SOURCE PICKER (Camera vs Gallery)
+         ========================================== -->
+    <div id="photo-source-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-3 sm:p-4">
+      <div class="sketch-card bg-[#FDFBF7] w-full max-w-xs p-4 text-center space-y-3 animate-pop">
+        <div class="text-3xl">📷</div>
+        <h3 class="font-title text-2xl font-bold text-[#2B2623]">Share a Photo</h3>
+        <p class="text-xs text-[#6E655F]">Snap a new photo with camera or pick from gallery</p>
+        <div class="flex flex-col gap-2 pt-1">
+          <button id="source-camera-btn" type="button" class="sketch-btn py-2.5 px-4 bg-[#7EE0C6] hover:bg-[#6AD6B9] font-ui font-bold text-sm flex items-center justify-center gap-2 active:scale-95">
+            <span class="text-xl">📸</span>
+            <span>Take Photo (Camera)</span>
+          </button>
+          <button id="source-gallery-btn" type="button" class="sketch-btn py-2.5 px-4 bg-[#FFE46B] hover:bg-[#FFDC4B] font-ui font-bold text-sm flex items-center justify-center gap-2 active:scale-95">
+            <span class="text-xl">🖼️</span>
+            <span>Choose from Gallery</span>
+          </button>
+          <button id="close-source-modal-btn" type="button" class="sketch-btn py-2 px-4 bg-white font-ui font-medium text-xs mt-1">
+            Cancel ✕
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         MODAL 2C: PHOTO PREVIEW & VIEW-ONCE SENDER
+         ========================================== -->
+    <div id="photo-preview-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-[2px] flex flex-col items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div class="polaroid-frame w-full max-w-sm bg-white p-3.5 flex flex-col items-center animate-pop space-y-2.5">
+        <div class="relative w-full max-h-[50vh] flex items-center justify-center bg-[#2B2623]/5 rounded border border-[#2B2623] overflow-hidden">
+          <img id="preview-send-img" src="" alt="Photo preview" draggable="false" oncontextmenu="return false;" class="w-full max-h-[46vh] object-contain select-none pointer-events-none" />
+          <span id="preview-view-once-badge" class="hidden absolute top-2 right-2 px-2.5 py-1 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full text-xs font-ui font-bold shadow-sm animate-pop">
+            👁️ 1 VIEW ONCE
+          </span>
+        </div>
+
+        <input 
+          id="preview-caption-input" 
+          type="text" 
+          maxlength="100" 
+          placeholder="Add a note or caption (optional)..." 
+          class="sketch-input w-full px-3 py-1.5 text-base font-hand"
+        />
+
+        <!-- View Once Toggle Control -->
+        <button 
+          id="toggle-view-once-btn" 
+          type="button" 
+          class="w-full sketch-btn py-2 px-3 bg-white hover:bg-amber-50 flex items-center justify-between text-xs font-ui active:scale-95 transition-all"
+        >
+          <div class="flex items-center gap-2">
+            <span id="view-once-icon" class="text-xl">👁️</span>
+            <div class="text-left">
+              <span id="view-once-label" class="font-bold block text-[#2B2623]">View Once Photo: OFF</span>
+              <span class="text-[10px] text-[#6E655F]">Tap to toggle disappearing photo</span>
+            </div>
+          </div>
+          <span id="view-once-pill" class="px-2 py-0.5 rounded-full border border-[#2B2623] text-[10px] font-bold bg-gray-100">
+            OFF
+          </span>
+        </button>
+
+        <p class="text-[11px] text-[#6E655F] font-ui text-center">
+          🔒 End-to-End Encrypted • Zero Server or Local Storage
+        </p>
+
+        <div class="flex gap-2 w-full pt-1">
+          <button id="cancel-send-photo-btn" type="button" class="sketch-btn flex-1 py-2 bg-white font-ui font-medium text-xs">
+            Cancel ✕
+          </button>
+          <button id="confirm-send-photo-btn" type="button" class="sketch-btn flex-1 py-2 bg-[#7EE0C6] hover:bg-[#6AD6B9] font-ui font-bold text-sm flex items-center justify-center gap-1 active:scale-95">
+            <span>Send Snap</span>
+            <span>➤</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ==========================================

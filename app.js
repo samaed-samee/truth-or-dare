@@ -233,7 +233,16 @@
             selectedType: state.selectedType,
             activeCard: state.activeCard,
             customDeck: state.customDeck,
-            chatHistory: state.chatHistory.slice(-40)
+            // Strict privacy: NEVER save photo dataUrl bytes in local/session storage
+            chatHistory: state.chatHistory.slice(-40).map(item => {
+              if (item.kind === 'photo') {
+                const safe = { ...item };
+                delete safe.dataUrl;
+                safe.dataUrl = null;
+                return safe;
+              }
+              return item;
+            })
           };
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
         } catch (e) {
@@ -340,7 +349,8 @@
         chatTypingRow: document.getElementById('chat-typing-row'),
         chatTypingLabel: document.getElementById('chat-typing-label'),
         chatForm: document.getElementById('chat-form'),
-        imageUploadInput: document.getElementById('image-upload-input'),
+        cameraCaptureInput: document.getElementById('camera-capture-input'),
+        galleryUploadInput: document.getElementById('gallery-upload-input'),
         sharePhotoBtn: document.getElementById('share-photo-btn'),
         chatMessageInput: document.getElementById('chat-message-input'),
         sendMsgBtn: document.getElementById('send-msg-btn'),
@@ -359,7 +369,21 @@
         photoLightboxModal: document.getElementById('photo-lightbox-modal'),
         lightboxImg: document.getElementById('lightbox-img'),
         lightboxCaption: document.getElementById('lightbox-caption'),
+        lightboxViewOnceBanner: document.getElementById('lightbox-view-once-banner'),
         closeLightboxBtn: document.getElementById('close-lightbox-btn'),
+        photoSourceModal: document.getElementById('photo-source-modal'),
+        sourceCameraBtn: document.getElementById('source-camera-btn'),
+        sourceGalleryBtn: document.getElementById('source-gallery-btn'),
+        closeSourceModalBtn: document.getElementById('close-source-modal-btn'),
+        photoPreviewModal: document.getElementById('photo-preview-modal'),
+        previewSendImg: document.getElementById('preview-send-img'),
+        previewViewOnceBadge: document.getElementById('preview-view-once-badge'),
+        previewCaptionInput: document.getElementById('preview-caption-input'),
+        toggleViewOnceBtn: document.getElementById('toggle-view-once-btn'),
+        viewOnceLabel: document.getElementById('view-once-label'),
+        viewOncePill: document.getElementById('view-once-pill'),
+        cancelSendPhotoBtn: document.getElementById('cancel-send-photo-btn'),
+        confirmSendPhotoBtn: document.getElementById('confirm-send-photo-btn'),
         leaveConfirmModal: document.getElementById('leave-confirm-modal'),
         cancelLeaveBtn: document.getElementById('cancel-leave-btn'),
         confirmLeaveBtn: document.getElementById('confirm-leave-btn'),
@@ -1031,9 +1055,23 @@
               caption: data.caption || `Snap from ${state.partnerName}`,
               time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               replyTo: data.replyTo || null,
-              reactions: data.reactions || {}
+              reactions: data.reactions || {},
+              viewOnce: Boolean(data.viewOnce),
+              viewed: false
             });
-            showToast(`${state.partnerName} shared a photo! 📷`, '📷', '#FFE46B');
+            showToast(data.viewOnce ? `${state.partnerName} sent a View Once photo 👁️` : `${state.partnerName} shared a photo! 📷`, '📷', '#FFE46B');
+            break;
+          }
+
+          case 'view_once_opened': {
+            const item = state.chatHistory.find(m => m.id === data.id);
+            if (item) {
+              item.viewed = true;
+              delete item.dataUrl;
+              item.dataUrl = null;
+            }
+            updateViewOnceCardDOM(data.id, true);
+            showToast(`${state.partnerName} opened your View Once photo 👁️`, '👁️', '#FFE46B');
             break;
           }
 
@@ -1729,6 +1767,80 @@
         }
       }
 
+      let pendingImageDataUrl = null;
+      let pendingViewOnce = false;
+      let activeLightboxViewOnceMsg = null;
+
+      function updateViewOnceToggleUI(isOn) {
+        if (!el.toggleViewOnceBtn) return;
+        if (isOn) {
+          el.toggleViewOnceBtn.classList.remove('bg-white');
+          el.toggleViewOnceBtn.classList.add('bg-[#FFF9DB]');
+          if (el.viewOnceLabel) el.viewOnceLabel.textContent = 'View Once Photo: ON 👁️';
+          if (el.viewOncePill) {
+            el.viewOncePill.textContent = 'VIEW ONCE';
+            el.viewOncePill.className = 'px-2 py-0.5 rounded-full border-2 border-[#2B2623] text-[10px] font-bold bg-[#FFE46B] text-[#2B2623]';
+          }
+          if (el.previewViewOnceBadge) el.previewViewOnceBadge.classList.remove('hidden');
+        } else {
+          el.toggleViewOnceBtn.classList.remove('bg-[#FFF9DB]');
+          el.toggleViewOnceBtn.classList.add('bg-white');
+          if (el.viewOnceLabel) el.viewOnceLabel.textContent = 'View Once Photo: OFF';
+          if (el.viewOncePill) {
+            el.viewOncePill.textContent = 'OFF';
+            el.viewOncePill.className = 'px-2 py-0.5 rounded-full border border-[#2B2623] text-[10px] font-bold bg-gray-100 text-[#2B2623]';
+          }
+          if (el.previewViewOnceBadge) el.previewViewOnceBadge.classList.add('hidden');
+        }
+      }
+
+      function updateViewOnceCardDOM(msgId, viewed) {
+        const wrapper = document.querySelector(`[data-msg-id="${msgId}"]`);
+        if (!wrapper) return;
+        const isMe = wrapper.classList.contains('flex-row-reverse');
+        const card = wrapper.querySelector('.view-once-card');
+        if (!card) return;
+
+        const iconCircle = card.querySelector('.view-once-icon-circle');
+        if (iconCircle) {
+          iconCircle.classList.remove('bg-[#FFE46B]');
+          iconCircle.classList.add('bg-gray-100');
+          iconCircle.textContent = '✓';
+        }
+        const titleEl = card.querySelector('.view-once-title');
+        if (titleEl) {
+          titleEl.textContent = 'View Once (Expired)';
+        }
+        const subEl = card.querySelector('.view-once-sub');
+        if (subEl) {
+          subEl.textContent = isMe ? `Opened by ${state.partnerName || 'friend'} 👁️` : 'Opened • Expired';
+        }
+      }
+
+      function closePhotoLightbox() {
+        if (activeLightboxViewOnceMsg) {
+          const msg = activeLightboxViewOnceMsg;
+          activeLightboxViewOnceMsg = null;
+          msg.viewed = true;
+          // Shred image bytes completely from memory
+          delete msg.dataUrl;
+          msg.dataUrl = null;
+
+          // Update card in chat
+          updateViewOnceCardDOM(msg.id, true);
+
+          // Inform partner that the view once photo was opened
+          sendEncrypted({
+            type: 'view_once_opened',
+            id: msg.id
+          });
+          showToast('View Once photo expired & shredded from memory 👁️', '🔒', '#FFE46B');
+        }
+        if (el.lightboxImg) el.lightboxImg.src = '';
+        if (el.lightboxViewOnceBanner) el.lightboxViewOnceBanner.classList.add('hidden');
+        if (el.photoLightboxModal) el.photoLightboxModal.classList.add('hidden');
+      }
+
       function appendPhotoMessage(msg, save = true) {
         msg.id = msg.id || ('msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
         msg.reactions = msg.reactions || {};
@@ -1747,46 +1859,112 @@
           `;
         }
 
-        wrapper.innerHTML = `
-          <!-- Swipe Reply Cue -->
-          <div class="swipe-reply-cue">↩️</div>
+        if (msg.viewOnce) {
+          // VIEW ONCE PHOTO: Never render image inline in chat! Private locked sketch badge.
+          const isExpired = Boolean(msg.viewed || !msg.dataUrl);
+          wrapper.innerHTML = `
+            <!-- Swipe Reply Cue -->
+            <div class="swipe-reply-cue">↩️</div>
 
-          <div class="w-8 h-8 p-1 sketch-pill bg-white flex items-center justify-center shrink-0 select-none">
-            ${getAvatarSvgHtml(msg.avatar)}
-          </div>
-
-          <div class="msg-swipe-target max-w-[240px]">
-            <div class="msg-content-box polaroid-frame cursor-pointer group relative">
-              ${replyHtml}
-              <div class="flex items-center ${isMe ? 'justify-end' : 'justify-between'} text-[11px] font-ui text-[#6E655F] mb-1">
-                ${!isMe ? `<span class="font-semibold text-[#2B2623]">📷 ${escapeHtml(msg.name)}</span>` : ''}
-                <span>${escapeHtml(msg.time)}</span>
-              </div>
-              <img src="${msg.dataUrl}" alt="Shared photo" class="w-full max-h-48 object-cover rounded border border-[#2B2623]" />
-              <p class="font-title text-xl text-center text-[#2B2623] mt-1 leading-none">${escapeHtml(msg.caption || 'Tap to view full size')}</p>
+            <div class="w-8 h-8 p-1 sketch-pill bg-white flex items-center justify-center shrink-0 select-none">
+              ${getAvatarSvgHtml(msg.avatar)}
             </div>
-          </div>
 
-          <!-- Quick reply for desktop hover -->
-          <button type="button" class="quick-reply-btn sketch-btn w-6 h-6 rounded-full bg-[#FFE46B] text-[11px] flex items-center justify-center shrink-0 self-center" title="Reply">
-            ↩️
-          </button>
-        `;
+            <div class="msg-swipe-target max-w-[260px]">
+              <div class="msg-content-box view-once-card sketch-box ${isMe ? 'bg-[#FFF9DB]' : 'bg-white'} p-2.5 cursor-pointer select-none active:scale-95 transition-transform">
+                ${replyHtml}
+                <div class="flex items-center gap-2.5">
+                  <div class="view-once-icon-circle w-9 h-9 rounded-full border-2 border-[#2B2623] ${isExpired ? 'bg-gray-100' : 'bg-[#FFE46B]'} flex items-center justify-center text-lg shrink-0 font-bold">
+                    ${isExpired ? '✓' : '👁️'}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between text-[11px] font-ui text-[#6E655F]">
+                      <span class="view-once-title font-bold text-[#2B2623] uppercase tracking-wide">
+                        ${isExpired ? 'View Once (Expired)' : 'View Once Photo'}
+                      </span>
+                      <span>${escapeHtml(msg.time)}</span>
+                    </div>
+                    <p class="view-once-sub text-xs font-hand text-[#2B2623] truncate mt-0.5">
+                      ${isExpired
+                        ? (isMe ? `Opened by ${state.partnerName || 'friend'} 👁️` : 'Opened • Expired')
+                        : (isMe ? 'Sent • Tap to view' : 'Tap to open • Disappears')
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        const polaroidImg = wrapper.querySelector('img');
-        let polaroidClickTimer = null;
-        if (polaroidImg) {
-          polaroidImg.addEventListener('click', (e) => {
-            if (e.detail === 2) {
-              clearTimeout(polaroidClickTimer);
-              return;
-            }
-            polaroidClickTimer = setTimeout(() => {
+            <!-- Quick reply for desktop hover -->
+            <button type="button" class="quick-reply-btn sketch-btn w-6 h-6 rounded-full bg-[#FFE46B] text-[11px] flex items-center justify-center shrink-0 self-center" title="Reply">
+              ↩️
+            </button>
+          `;
+
+          const viewOnceCard = wrapper.querySelector('.view-once-card');
+          if (viewOnceCard) {
+            viewOnceCard.addEventListener('click', () => {
+              if (msg.viewed || !msg.dataUrl) {
+                showToast('This View Once photo has expired and was permanently shredded', '🔒', '#FF8B8B');
+                return;
+              }
+              // Open in Lightbox
               el.lightboxImg.src = msg.dataUrl;
-              el.lightboxCaption.textContent = `${isMe ? 'Shared by You' : 'Shared by ' + msg.name} • ${msg.time}`;
+              el.lightboxCaption.textContent = msg.caption || `Snap • ${msg.time}`;
+              if (el.lightboxViewOnceBanner) el.lightboxViewOnceBanner.classList.remove('hidden');
+              activeLightboxViewOnceMsg = msg;
               el.photoLightboxModal.classList.remove('hidden');
-            }, 240);
-          });
+            });
+          }
+        } else {
+          // REGULAR PHOTO: Classic sketch polaroid frame
+          wrapper.innerHTML = `
+            <!-- Swipe Reply Cue -->
+            <div class="swipe-reply-cue">↩️</div>
+
+            <div class="w-8 h-8 p-1 sketch-pill bg-white flex items-center justify-center shrink-0 select-none">
+              ${getAvatarSvgHtml(msg.avatar)}
+            </div>
+
+            <div class="msg-swipe-target max-w-[240px]">
+              <div class="msg-content-box polaroid-frame cursor-pointer group relative">
+                ${replyHtml}
+                <div class="flex items-center ${isMe ? 'justify-end' : 'justify-between'} text-[11px] font-ui text-[#6E655F] mb-1">
+                  ${!isMe ? `<span class="font-semibold text-[#2B2623]">📷 ${escapeHtml(msg.name)}</span>` : ''}
+                  <span>${escapeHtml(msg.time)}</span>
+                </div>
+                <img src="${msg.dataUrl || ''}" alt="Shared photo" draggable="false" oncontextmenu="return false;" class="w-full max-h-48 object-cover rounded border border-[#2B2623]" />
+                <p class="font-title text-xl text-center text-[#2B2623] mt-1 leading-none">${escapeHtml(msg.caption || 'Tap to view full size')}</p>
+              </div>
+            </div>
+
+            <!-- Quick reply for desktop hover -->
+            <button type="button" class="quick-reply-btn sketch-btn w-6 h-6 rounded-full bg-[#FFE46B] text-[11px] flex items-center justify-center shrink-0 self-center" title="Reply">
+              ↩️
+            </button>
+          `;
+
+          const polaroidImg = wrapper.querySelector('img');
+          let polaroidClickTimer = null;
+          if (polaroidImg) {
+            polaroidImg.addEventListener('click', (e) => {
+              if (e.detail === 2) {
+                clearTimeout(polaroidClickTimer);
+                return;
+              }
+              polaroidClickTimer = setTimeout(() => {
+                if (!msg.dataUrl) {
+                  showToast('Photo expired (not stored in memory)', '📷', '#FFE46B');
+                  return;
+                }
+                el.lightboxImg.src = msg.dataUrl;
+                el.lightboxCaption.textContent = `${isMe ? 'Shared by You' : 'Shared by ' + msg.name} • ${msg.time}`;
+                if (el.lightboxViewOnceBanner) el.lightboxViewOnceBanner.classList.add('hidden');
+                activeLightboxViewOnceMsg = null;
+                el.photoLightboxModal.classList.remove('hidden');
+              }, 240);
+            });
+          }
         }
 
         setupMessageInteractions(wrapper, msg);
@@ -1803,18 +1981,18 @@
       /* ----------------------------------------------------------
          10. IMAGE COMPRESSION & ENCRYPTED PHOTO SHARING
       ---------------------------------------------------------- */
-      function compressAndSendImage(file) {
+      function handleSelectedImageFile(file) {
         if (!file || !file.type.startsWith('image/')) {
           showToast('Please select a valid photo file', '📷', '#FF8B8B');
           return;
         }
 
-        showToast('Preparing & sending your snap...', '📷', '#FFE46B');
+        showToast('Preparing your snap...', '📷', '#FFE46B');
 
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
-          img.onload = async () => {
+          img.onload = () => {
             const MAX_DIM = 850;
             let width = img.width;
             let height = img.height;
@@ -1833,38 +2011,51 @@
             ctx.drawImage(img, 0, 0, width, height);
 
             const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78);
-            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const replyTarget = state.replyingTo;
-            cancelReply();
-            const newMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            pendingImageDataUrl = compressedDataUrl;
+            pendingViewOnce = false;
 
-            appendPhotoMessage({
-              id: newMsgId,
-              sender: 'me',
-              name: state.myName,
-              avatar: state.myAvatar,
-              dataUrl: compressedDataUrl,
-              caption: 'Notebook Snap ✨',
-              time: timeStr,
-              replyTo: replyTarget
-            });
-
-            const sent = await sendEncrypted({
-              type: 'photo_msg',
-              id: newMsgId,
-              dataUrl: compressedDataUrl,
-              caption: `Snap from ${state.myName} ✨`,
-              time: timeStr,
-              replyTo: replyTarget
-            });
-
-            if (!sent && !state.partnerOnline) {
-              showToast('Photo added to notebook! Friend will see it when connected.', '📷', '#FFE46B');
-            }
+            if (el.previewSendImg) el.previewSendImg.src = compressedDataUrl;
+            if (el.previewCaptionInput) el.previewCaptionInput.value = '';
+            updateViewOnceToggleUI(false);
+            if (el.photoPreviewModal) el.photoPreviewModal.classList.remove('hidden');
           };
           img.src = e.target.result;
         };
         reader.readAsDataURL(file);
+      }
+
+      async function sendPreparedPhoto(dataUrl, caption, viewOnce = false) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const replyTarget = state.replyingTo;
+        cancelReply();
+        const newMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+
+        appendPhotoMessage({
+          id: newMsgId,
+          sender: 'me',
+          name: state.myName,
+          avatar: state.myAvatar,
+          dataUrl: dataUrl,
+          caption: caption || (viewOnce ? 'View Once Snap 👁️' : 'Notebook Snap ✨'),
+          time: timeStr,
+          replyTo: replyTarget,
+          viewOnce: viewOnce,
+          viewed: false
+        });
+
+        const sent = await sendEncrypted({
+          type: 'photo_msg',
+          id: newMsgId,
+          dataUrl: dataUrl,
+          caption: caption || (viewOnce ? `View Once from ${state.myName} 👁️` : `Snap from ${state.myName} ✨`),
+          time: timeStr,
+          replyTo: replyTarget,
+          viewOnce: viewOnce
+        });
+
+        if (!sent && !state.partnerOnline) {
+          showToast('Photo queued! Friend will receive it when connected.', '📷', '#FFE46B');
+        }
       }
 
       /* ----------------------------------------------------------
@@ -2341,22 +2532,85 @@
         el.cancelReplyBtn.addEventListener('click', cancelReply);
       }
 
-      // Photo Sharing Events
-      el.sharePhotoBtn.addEventListener('click', () => {
-        el.imageUploadInput.click();
-      });
+      // Photo Sharing Events (Camera vs Gallery & View Once Modal)
+      if (el.sharePhotoBtn) {
+        el.sharePhotoBtn.addEventListener('click', () => {
+          if (el.photoSourceModal) el.photoSourceModal.classList.remove('hidden');
+        });
+      }
 
-      el.imageUploadInput.addEventListener('change', (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (file) {
-          compressAndSendImage(file);
-        }
-        el.imageUploadInput.value = '';
-      });
+      if (el.sourceCameraBtn) {
+        el.sourceCameraBtn.addEventListener('click', () => {
+          if (el.photoSourceModal) el.photoSourceModal.classList.add('hidden');
+          if (el.cameraCaptureInput) el.cameraCaptureInput.click();
+        });
+      }
 
-      el.closeLightboxBtn.addEventListener('click', () => {
-        el.photoLightboxModal.classList.add('hidden');
-      });
+      if (el.sourceGalleryBtn) {
+        el.sourceGalleryBtn.addEventListener('click', () => {
+          if (el.photoSourceModal) el.photoSourceModal.classList.add('hidden');
+          if (el.galleryUploadInput) el.galleryUploadInput.click();
+        });
+      }
+
+      if (el.closeSourceModalBtn) {
+        el.closeSourceModalBtn.addEventListener('click', () => {
+          if (el.photoSourceModal) el.photoSourceModal.classList.add('hidden');
+        });
+      }
+
+      if (el.cameraCaptureInput) {
+        el.cameraCaptureInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file) handleSelectedImageFile(file);
+          el.cameraCaptureInput.value = '';
+        });
+      }
+
+      if (el.galleryUploadInput) {
+        el.galleryUploadInput.addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (file) handleSelectedImageFile(file);
+          el.galleryUploadInput.value = '';
+        });
+      }
+
+      if (el.toggleViewOnceBtn) {
+        el.toggleViewOnceBtn.addEventListener('click', () => {
+          pendingViewOnce = !pendingViewOnce;
+          updateViewOnceToggleUI(pendingViewOnce);
+        });
+      }
+
+      if (el.cancelSendPhotoBtn) {
+        el.cancelSendPhotoBtn.addEventListener('click', () => {
+          if (el.photoPreviewModal) el.photoPreviewModal.classList.add('hidden');
+          pendingImageDataUrl = null;
+          if (el.previewSendImg) el.previewSendImg.src = '';
+        });
+      }
+
+      if (el.confirmSendPhotoBtn) {
+        el.confirmSendPhotoBtn.addEventListener('click', () => {
+          if (!pendingImageDataUrl) return;
+          const caption = el.previewCaptionInput ? el.previewCaptionInput.value.trim() : '';
+          const viewOnce = pendingViewOnce;
+          if (el.photoPreviewModal) el.photoPreviewModal.classList.add('hidden');
+          sendPreparedPhoto(pendingImageDataUrl, caption, viewOnce);
+          pendingImageDataUrl = null;
+          if (el.previewSendImg) el.previewSendImg.src = '';
+        });
+      }
+
+      // Close Lightbox (with view once shredding)
+      if (el.closeLightboxBtn) {
+        el.closeLightboxBtn.addEventListener('click', closePhotoLightbox);
+      }
+      if (el.photoLightboxModal) {
+        el.photoLightboxModal.addEventListener('click', (e) => {
+          if (e.target === el.photoLightboxModal) closePhotoLightbox();
+        });
+      }
 
       /* ----------------------------------------------------------
          13. AUTO-RESTORE SESSION IF PAGE WAS MINIMIZED / RELOADED
