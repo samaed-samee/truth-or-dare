@@ -1891,7 +1891,7 @@
         }
         const titleEl = card.querySelector('.view-once-title');
         if (titleEl) {
-          titleEl.textContent = 'View Once (Expired)';
+          titleEl.textContent = isMe ? 'View Once (Opened)' : 'View Once (Expired)';
         }
         const subEl = card.querySelector('.view-once-sub');
         if (subEl) {
@@ -1904,23 +1904,18 @@
           const msg = activeLightboxViewOnceMsg;
           activeLightboxViewOnceMsg = null;
 
-          if (msg.sender !== 'me') {
-            // Recipient viewed photo: permanently shred from memory & notify sender
-            msg.viewed = true;
-            delete msg.dataUrl;
-            msg.dataUrl = null;
+          // Only recipient can open View Once into lightbox; shred and notify sender
+          msg.viewed = true;
+          delete msg.dataUrl;
+          msg.dataUrl = null;
 
-            updateViewOnceCardDOM(msg.id, true);
+          updateViewOnceCardDOM(msg.id, true);
 
-            sendEncrypted({
-              type: 'view_once_opened',
-              id: msg.id
-            });
-            showToast('View Once photo expired & shredded from memory 👁️', '🔒', '#FFE46B');
-          } else {
-            // Sender previewed their own sent snap locally: do NOT expire for friend
-            showToast(`Preview closed. Waiting for ${state.partnerName || 'friend'} to open it 👁️`, '👁️', '#FFE46B');
-          }
+          sendEncrypted({
+            type: 'view_once_opened',
+            id: msg.id
+          });
+          showToast('View Once photo expired & shredded from memory 👁️', '🔒', '#FFE46B');
         }
         if (el.lightboxImg) el.lightboxImg.src = '';
         if (el.lightboxViewOnceBanner) el.lightboxViewOnceBanner.classList.add('hidden');
@@ -1947,7 +1942,7 @@
 
         if (msg.viewOnce) {
           // VIEW ONCE PHOTO: Never render image inline in chat! Private locked sketch badge.
-          const isExpired = Boolean(msg.viewed || !msg.dataUrl);
+          const isExpired = Boolean(msg.viewed || (!isMe && !msg.dataUrl));
           wrapper.innerHTML = `
             <!-- Swipe Reply Cue -->
             <div class="swipe-reply-cue">↩️</div>
@@ -1957,7 +1952,7 @@
             </div>
 
             <div class="msg-swipe-target max-w-[260px]">
-              <div class="msg-content-box view-once-card sketch-box ${isMe ? 'bg-[#FFF9DB]' : 'bg-white'} p-2.5 cursor-pointer select-none active:scale-95 transition-transform">
+              <div class="msg-content-box view-once-card sketch-box ${isMe ? 'bg-[#FFF9DB]' : 'bg-white'} p-2.5 select-none ${isMe ? 'cursor-default' : 'cursor-pointer active:scale-95 transition-transform'}">
                 ${replyHtml}
                 <div class="flex items-center gap-2.5">
                   <div class="view-once-icon-circle w-9 h-9 rounded-full border-2 border-[#2B2623] ${isExpired ? 'bg-gray-100' : 'bg-[#FFE46B]'} flex items-center justify-center text-lg shrink-0 font-bold">
@@ -1966,14 +1961,14 @@
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between text-[11px] font-ui text-[#6E655F]">
                       <span class="view-once-title font-bold text-[#2B2623] uppercase tracking-wide">
-                        ${isExpired ? 'View Once (Expired)' : 'View Once Photo'}
+                        ${isExpired ? (isMe ? 'View Once (Opened)' : 'View Once (Expired)') : 'View Once Photo'}
                       </span>
                       <span>${escapeHtml(msg.time)}</span>
                     </div>
                     <p class="view-once-sub text-xs font-hand text-[#2B2623] truncate mt-0.5">
                       ${isExpired
                         ? (isMe ? `Opened by ${state.partnerName || 'friend'} 👁️` : 'Opened • Expired')
-                        : (isMe ? 'Sent • Tap to view' : 'Tap to open • Disappears')
+                        : (isMe ? `Sent • Waiting for ${state.partnerName || 'friend'} 🔒` : 'Tap to open • Disappears 👁️')
                       }
                     </p>
                   </div>
@@ -1990,26 +1985,30 @@
           const viewOnceCard = wrapper.querySelector('.view-once-card');
           if (viewOnceCard) {
             viewOnceCard.addEventListener('click', () => {
-              if (msg.viewed || !msg.dataUrl) {
-                showToast(
-                  isMe
-                    ? `This View Once photo was already opened by ${state.partnerName || 'friend'} 👁️`
-                    : 'This View Once photo has expired and was permanently shredded',
-                  '🔒',
-                  '#FF8B8B'
-                );
+              // SENDER cannot open View Once photo (WhatsApp standard)
+              if (isMe) {
+                if (msg.viewed) {
+                  showToast(`Opened by ${state.partnerName || 'friend'} • Permanently deleted 🔒`, '👁️', '#FFE46B');
+                } else {
+                  showToast(`View Once photo sent. Only ${state.partnerName || 'your friend'} can open it! 🔒`, '🔒', '#FFE46B');
+                }
                 return;
               }
-              // Open in Lightbox
+
+              // RECIPIENT ONLY can open
+              if (msg.viewed || !msg.dataUrl) {
+                showToast('This View Once photo has expired and was permanently shredded', '🔒', '#FF8B8B');
+                return;
+              }
+
+              // Open in Lightbox (Recipient)
               el.lightboxImg.src = msg.dataUrl;
               el.lightboxCaption.textContent = msg.caption || `Snap • ${msg.time}`;
               if (el.lightboxViewOnceBanner) {
                 el.lightboxViewOnceBanner.classList.remove('hidden');
                 const bannerText = el.lightboxViewOnceBanner.querySelector('span:last-child');
                 if (bannerText) {
-                  bannerText.textContent = isMe
-                    ? `YOUR VIEW ONCE PHOTO — Waiting for ${state.partnerName || 'friend'} to open`
-                    : 'VIEW ONCE PHOTO — Disappears immediately after closing';
+                  bannerText.textContent = 'VIEW ONCE PHOTO — Disappears immediately after closing';
                 }
               }
               activeLightboxViewOnceMsg = msg;
@@ -2152,6 +2151,16 @@
           replyTo: replyTarget,
           viewOnce: viewOnce
         });
+
+        if (viewOnce) {
+          // Zero-trace security: Immediately shred image bytes from sender memory
+          // Sender cannot open a sent View Once photo
+          const selfMsg = state.chatHistory.find(m => m.id === newMsgId);
+          if (selfMsg) {
+            delete selfMsg.dataUrl;
+            selfMsg.dataUrl = null;
+          }
+        }
 
         if (!sent && !state.partnerOnline) {
           showToast('Photo queued! Friend will receive it when connected.', '📷', '#FFE46B');
