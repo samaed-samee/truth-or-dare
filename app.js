@@ -365,6 +365,7 @@
         partnerAvatarBox: document.getElementById('partner-avatar-box'),
         partnerOnlineDot: document.getElementById('partner-online-dot'),
         partnerNameDisplay: document.getElementById('partner-name-display'),
+        e2eeLockIcon: document.getElementById('e2ee-lock-icon'),
         partnerMicBadge: document.getElementById('partner-mic-badge'),
         partnerMicIcon: document.getElementById('partner-mic-icon'),
         partnerStatusText: document.getElementById('partner-status-text'),
@@ -746,6 +747,7 @@
 
             if (rawPacket.pubJwk) {
               await CryptoEngine.completeEcdhHandshake(rawPacket.pubJwk, state.roomCode);
+              updatePresenceUI();
             }
 
             // Send encrypted profile + state sync
@@ -1021,7 +1023,7 @@
             const previousName = state.partnerName;
             const isFirstJoin = previousName === 'Waiting for friend...' || previousName === 'Connecting to host...';
             const wasExplicitlyLeft = Boolean(state.partnerExplicitlyLeft);
-            state.partnerName = data.name || 'Friend';
+            state.partnerName = (data.name || 'Friend').slice(0, 6);
             state.partnerAvatar = data.avatar || 'panda';
             state.partnerMicOn = Boolean(data.micOn);
             state.partnerOnline = true;
@@ -1277,6 +1279,12 @@
         }
         el.partnerAvatarBox.innerHTML = `<div class="w-7 h-7">${getAvatarSvgHtml(state.partnerAvatar)}</div>`;
         el.partnerNameDisplay.textContent = state.partnerName;
+
+        // Lock icon strictly shown when both sides are connected and end-to-end encryption is established
+        const isE2eeActive = Boolean(state.partnerOnline && CryptoEngine.key);
+        if (el.e2eeLockIcon) {
+          el.e2eeLockIcon.classList.toggle('hidden', !isE2eeActive);
+        }
 
         if (state.partnerOnline) {
           el.partnerOnlineDot.className = 'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#4ADE80] border-2 border-[#2B2623]';
@@ -1895,20 +1903,24 @@
         if (activeLightboxViewOnceMsg) {
           const msg = activeLightboxViewOnceMsg;
           activeLightboxViewOnceMsg = null;
-          msg.viewed = true;
-          // Shred image bytes completely from memory
-          delete msg.dataUrl;
-          msg.dataUrl = null;
 
-          // Update card in chat
-          updateViewOnceCardDOM(msg.id, true);
+          if (msg.sender !== 'me') {
+            // Recipient viewed photo: permanently shred from memory & notify sender
+            msg.viewed = true;
+            delete msg.dataUrl;
+            msg.dataUrl = null;
 
-          // Inform partner that the view once photo was opened
-          sendEncrypted({
-            type: 'view_once_opened',
-            id: msg.id
-          });
-          showToast('View Once photo expired & shredded from memory 👁️', '🔒', '#FFE46B');
+            updateViewOnceCardDOM(msg.id, true);
+
+            sendEncrypted({
+              type: 'view_once_opened',
+              id: msg.id
+            });
+            showToast('View Once photo expired & shredded from memory 👁️', '🔒', '#FFE46B');
+          } else {
+            // Sender previewed their own sent snap locally: do NOT expire for friend
+            showToast(`Preview closed. Waiting for ${state.partnerName || 'friend'} to open it 👁️`, '👁️', '#FFE46B');
+          }
         }
         if (el.lightboxImg) el.lightboxImg.src = '';
         if (el.lightboxViewOnceBanner) el.lightboxViewOnceBanner.classList.add('hidden');
@@ -1979,13 +1991,27 @@
           if (viewOnceCard) {
             viewOnceCard.addEventListener('click', () => {
               if (msg.viewed || !msg.dataUrl) {
-                showToast('This View Once photo has expired and was permanently shredded', '🔒', '#FF8B8B');
+                showToast(
+                  isMe
+                    ? `This View Once photo was already opened by ${state.partnerName || 'friend'} 👁️`
+                    : 'This View Once photo has expired and was permanently shredded',
+                  '🔒',
+                  '#FF8B8B'
+                );
                 return;
               }
               // Open in Lightbox
               el.lightboxImg.src = msg.dataUrl;
               el.lightboxCaption.textContent = msg.caption || `Snap • ${msg.time}`;
-              if (el.lightboxViewOnceBanner) el.lightboxViewOnceBanner.classList.remove('hidden');
+              if (el.lightboxViewOnceBanner) {
+                el.lightboxViewOnceBanner.classList.remove('hidden');
+                const bannerText = el.lightboxViewOnceBanner.querySelector('span:last-child');
+                if (bannerText) {
+                  bannerText.textContent = isMe
+                    ? `YOUR VIEW ONCE PHOTO — Waiting for ${state.partnerName || 'friend'} to open`
+                    : 'VIEW ONCE PHOTO — Disappears immediately after closing';
+                }
+              }
               activeLightboxViewOnceMsg = msg;
               el.photoLightboxModal.classList.remove('hidden');
             });
@@ -2235,7 +2261,7 @@
       });
 
       function validateNickname() {
-        const nameVal = el.playerNameInput.value.trim();
+        let nameVal = el.playerNameInput.value.trim();
         if (!nameVal) {
           showToast('Please enter your nickname first! ✏️', '⚠️', '#FF8B8B');
           el.playerNameInput.focus();
@@ -2246,10 +2272,17 @@
           el.playerNameInput.style.backgroundColor = '#FEF2F2';
           return null;
         }
+        if (nameVal.length > 6) {
+          nameVal = nameVal.slice(0, 6);
+          el.playerNameInput.value = nameVal;
+        }
         return nameVal;
       }
 
       el.playerNameInput.addEventListener('input', () => {
+        if (el.playerNameInput.value.length > 6) {
+          el.playerNameInput.value = el.playerNameInput.value.slice(0, 6);
+        }
         if (el.playerNameInput.value.trim()) {
           el.playerNameInput.style.borderColor = '';
           el.playerNameInput.style.backgroundColor = '';
@@ -2704,7 +2737,8 @@
           }
           if (!saved || !saved.roomCode || saved.roomCode.length !== 10) return;
 
-          state.myName = saved.myName || 'Sketcher';
+          state.myName = (saved.myName || 'Sketcher').slice(0, 6);
+          if (el.playerNameInput) el.playerNameInput.value = state.myName;
           state.myAvatar = EMOJI_TO_AVATAR_KEY[saved.myAvatar] || saved.myAvatar || 'fox';
           state.role = saved.role || 'host';
           state.roomCode = saved.roomCode;

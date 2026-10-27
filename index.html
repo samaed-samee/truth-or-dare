@@ -142,8 +142,8 @@
           <input 
             id="player-name-input" 
             type="text" 
-            maxlength="18" 
-            placeholder="Write your nickname (Required)..." 
+            maxlength="6" 
+            placeholder="Your nickname (Max 6 chars)..." 
             autocomplete="off"
             spellcheck="false"
             class="sketch-input w-full px-3.5 py-2 text-lg font-hand transition-colors duration-150"
@@ -247,6 +247,8 @@
                 <h2 id="partner-name-display" class="font-ui font-bold text-sm text-[#2B2623] truncate leading-tight">
                   Waiting for friend...
                 </h2>
+                <!-- E2EE Lock Icon (Visible on mobile & desktop ONLY when both sides are connected and cryptographically verified!) -->
+                <span id="e2ee-lock-icon" class="hidden text-xs shrink-0 select-none cursor-default ml-0.5" title="End-to-End Encrypted (AES-256-GCM)">🔒</span>
                 <!-- Partner Mic Status (Shown only when Live!) -->
                 <span id="partner-mic-badge" class="hidden items-center text-xs mic-live-pulse shrink-0" title="Friend's Mic Live">
                   <span id="partner-mic-icon">🎙️</span>
@@ -276,15 +278,6 @@
               <span id="header-room-code" class="tracking-wide">#CODE</span>
               <span>📋</span>
             </button>
-
-            <!-- Military-Grade E2EE Status Indicator -->
-            <span 
-              id="e2ee-status-badge" 
-              title="Military-Grade End-to-End Encrypted (AES-256-GCM + ECDH P-256 + DTLS-SRTP Audio)" 
-              class="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-[#D1FAE5] border-2 border-[#2B2623] rounded-lg text-[11px] font-ui font-bold text-[#2B2623] shadow-[1.5px_1.5px_0px_#2B2623] select-none cursor-default"
-            >
-              🔒 E2EE
-            </span>
 
             <!-- Live Voice Mic On/Off Button -->
             <button 
