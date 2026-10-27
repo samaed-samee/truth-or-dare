@@ -204,7 +204,8 @@
         activeCard: null, // { type, text, target: 'me'|'partner', authorName }
         customDeck: [...DEFAULT_DECK],
         deckFilter: 'all',
-        chatHistory: []
+        chatHistory: [],
+        replyingTo: null
       };
 
       // Generate or restore unique player token so reconnections after browser minimize are recognized
@@ -316,6 +317,10 @@
         imageUploadInput: document.getElementById('image-upload-input'),
         sharePhotoBtn: document.getElementById('share-photo-btn'),
         chatMessageInput: document.getElementById('chat-message-input'),
+        replyPreviewBar: document.getElementById('reply-preview-bar'),
+        replyTargetName: document.getElementById('reply-target-name'),
+        replyTargetSnippet: document.getElementById('reply-target-snippet'),
+        cancelReplyBtn: document.getElementById('cancel-reply-btn'),
 
         // Modals
         customDeckModal: document.getElementById('custom-deck-modal'),
@@ -853,26 +858,22 @@
       function updateMicUI() {
         // My Mic Button
         if (state.myMicOn) {
-          el.micToggleBtn.className = 'sketch-btn w-9 h-9 flex items-center justify-center bg-[#A8E6CF] text-base relative mic-live-pulse';
+          el.micToggleBtn.className = 'header-btn bg-[#A8E6CF] text-sm relative mic-live-pulse';
           el.myMicSlash.classList.add('hidden');
         } else {
-          el.micToggleBtn.className = 'sketch-btn w-9 h-9 flex items-center justify-center bg-white text-base relative';
+          el.micToggleBtn.className = 'header-btn bg-white text-sm relative';
           el.myMicSlash.classList.remove('hidden');
         }
 
-        // Partner Mic Badge in Header
-        if (state.partnerOnline) {
+        // Partner Mic Badge in Header (Shown only when Live to keep header clean)
+        if (state.partnerOnline && state.partnerMicOn) {
           el.partnerMicBadge.classList.remove('hidden');
           el.partnerMicBadge.classList.add('inline-flex');
-          if (state.partnerMicOn) {
-            el.partnerMicBadge.className = 'inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-ui font-semibold rounded-full border border-[#2B2623] bg-[#A8E6CF] shrink-0 mic-live-pulse';
-            el.partnerMicIcon.textContent = '🎙️ Live';
-          } else {
-            el.partnerMicBadge.className = 'inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-ui font-medium rounded-full border border-[#2B2623] bg-gray-100 shrink-0';
-            el.partnerMicIcon.textContent = '🔇 Off';
-          }
+          el.partnerMicBadge.className = 'inline-flex items-center text-xs shrink-0 mic-live-pulse';
+          el.partnerMicIcon.textContent = '🎙️';
         } else {
           el.partnerMicBadge.classList.add('hidden');
+          el.partnerMicBadge.classList.remove('inline-flex');
         }
       }
 
@@ -962,11 +963,14 @@
             state.partnerTyping = false;
             updateTypingUI();
             appendChatMessage({
+              id: data.id,
               sender: 'partner',
               name: state.partnerName,
               avatar: state.partnerAvatar,
               text: data.text,
-              time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              replyTo: data.replyTo || null,
+              reactions: data.reactions || {}
             });
             break;
           }
@@ -975,14 +979,22 @@
             state.partnerTyping = false;
             updateTypingUI();
             appendPhotoMessage({
+              id: data.id,
               sender: 'partner',
               name: state.partnerName,
               avatar: state.partnerAvatar,
               dataUrl: data.dataUrl,
               caption: data.caption || `Snap from ${state.partnerName}`,
-              time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              time: data.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              replyTo: data.replyTo || null,
+              reactions: data.reactions || {}
             });
             showToast(`${state.partnerName} shared a photo! 📷`, '📷', '#FFE46B');
+            break;
+          }
+
+          case 'msg_reaction': {
+            toggleHeartReaction(data.msgId, false, data);
             break;
           }
 
@@ -1094,23 +1106,26 @@
          8. UI RENDERING: PRESENCE, TYPING, GAME STAGE & CHAT
       ---------------------------------------------------------- */
       function updatePresenceUI() {
-        el.headerRoomCode.textContent = state.roomCode || '----------';
+        el.headerRoomCode.textContent = state.roomCode ? `#${state.roomCode.slice(0, 4)}…` : '#CODE';
+        if (state.roomCode && el.copyCodePill) {
+          el.copyCodePill.title = `Room Code: ${state.roomCode} (Tap to copy full code)`;
+        }
         el.partnerAvatarBox.innerHTML = `<div class="w-7 h-7">${getAvatarSvgHtml(state.partnerAvatar)}</div>`;
         el.partnerNameDisplay.textContent = state.partnerName;
 
         if (state.partnerOnline) {
           el.partnerOnlineDot.className = 'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#4ADE80] border-2 border-[#2B2623]';
-          el.partnerStatusText.textContent = 'Online right now';
+          el.partnerStatusText.textContent = 'Online';
           el.partnerStatusText.className = 'text-emerald-700 font-ui font-medium truncate';
           el.connectionBanner.classList.add('hidden');
         } else if (state.partnerExplicitlyLeft) {
           el.partnerOnlineDot.className = 'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#FF6B6B] border-2 border-[#2B2623]';
-          el.partnerStatusText.textContent = 'Left the room';
+          el.partnerStatusText.textContent = 'Left notebook';
           el.partnerStatusText.className = 'text-rose-600 font-ui font-medium truncate';
           el.connectionBanner.classList.remove('hidden');
         } else {
           el.partnerOnlineDot.className = 'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#2B2623]';
-          el.partnerStatusText.textContent = state.partnerToken ? 'Reconnecting...' : 'Waiting to join...';
+          el.partnerStatusText.textContent = state.partnerToken ? 'Reconnecting...' : 'Waiting...';
           el.partnerStatusText.className = 'text-[#6E655F] truncate';
           el.connectionBanner.classList.remove('hidden');
           updateConnectionBanner(
@@ -1281,24 +1296,356 @@
         scrollToBottom();
       }
 
+      function setReplyTarget(target) {
+        state.replyingTo = target;
+        if (el.replyPreviewBar && el.replyTargetName && el.replyTargetSnippet) {
+          el.replyTargetName.textContent = `Replying to ${target.name}`;
+          const snippet = target.text || '';
+          el.replyTargetSnippet.textContent = snippet.length > 55 ? snippet.slice(0, 55) + '…' : snippet;
+          el.replyPreviewBar.classList.remove('hidden');
+          el.replyPreviewBar.classList.add('flex');
+        }
+        if (el.chatMessageInput) {
+          el.chatMessageInput.focus();
+        }
+      }
+
+      function cancelReply() {
+        state.replyingTo = null;
+        if (el.replyPreviewBar) {
+          el.replyPreviewBar.classList.add('hidden');
+          el.replyPreviewBar.classList.remove('flex');
+        }
+      }
+
+      function scrollToMessage(msgId) {
+        if (!msgId) return;
+        const target = document.querySelector(`[data-msg-id="${msgId}"]`);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const box = target.querySelector('.msg-content-box') || target;
+          box.classList.remove('animate-shake');
+          void box.offsetWidth;
+          box.classList.add('animate-shake');
+          setTimeout(() => box.classList.remove('animate-shake'), 450);
+        }
+      }
+
+      function renderReactionBadge(msgEl, reactions, msgId) {
+        if (!msgEl) return;
+        const contentBox = msgEl.querySelector('.msg-content-box') || msgEl;
+        let badge = contentBox.querySelector('.msg-reaction-badge');
+
+        const likers = Object.entries(reactions || {});
+        if (likers.length === 0) {
+          if (badge) badge.remove();
+          return;
+        }
+
+        if (!badge) {
+          badge = document.createElement('button');
+          badge.type = 'button';
+          badge.className = 'msg-reaction-badge animate-pop';
+          badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleHeartReaction(msgId, true);
+          });
+          contentBox.appendChild(badge);
+        }
+
+        const myToken = state.playerToken || 'me';
+        const isLikedByMe = Boolean(reactions && reactions[myToken]);
+        if (isLikedByMe) {
+          badge.classList.add('my-liked');
+          badge.title = 'You liked this (Tap to unlike)';
+        } else {
+          badge.classList.remove('my-liked');
+          badge.title = 'Tap to like';
+        }
+
+        // Render each liker's doodle avatar
+        let avatarsHtml = '';
+        likers.forEach(([tok, u]) => {
+          const avatarKey = (u && u.avatar) || 'fox';
+          const name = (u && u.name) || 'Friend';
+          avatarsHtml += `
+            <span class="reaction-avatar-mini" title="${escapeHtml(name)}">
+              ${getAvatarSvgHtml(avatarKey)}
+            </span>
+          `;
+        });
+
+        badge.innerHTML = `
+          <span class="select-none text-xs">❤️</span>
+          <div class="reaction-avatar-stack flex items-center -space-x-1.5 pointer-events-none">
+            ${avatarsHtml}
+          </div>
+        `;
+      }
+
+      function toggleHeartReaction(msgId, fromLocal = true, remoteData = null) {
+        if (!msgId) return;
+        const msgWrapper = document.querySelector(`[data-msg-id="${msgId}"]`);
+        const contentBox = msgWrapper ? (msgWrapper.querySelector('.msg-content-box') || msgWrapper) : null;
+
+        const historyItem = state.chatHistory.find(m => m.id === msgId);
+        let reactions = {};
+        if (historyItem) {
+          historyItem.reactions = historyItem.reactions || {};
+          reactions = historyItem.reactions;
+        }
+
+        if (fromLocal) {
+          const myToken = state.playerToken || 'me';
+          const alreadyLiked = Boolean(reactions[myToken]);
+
+          if (alreadyLiked) {
+            // UNLIKE: Only the user who gave the like can remove their like!
+            delete reactions[myToken];
+            if (historyItem) {
+              historyItem.reactions = reactions;
+              saveSessionState();
+            }
+            if (msgWrapper) {
+              renderReactionBadge(msgWrapper, reactions, msgId);
+            }
+            sendEncrypted({
+              type: 'msg_reaction',
+              msgId: msgId,
+              action: 'unlike',
+              userToken: myToken
+            });
+          } else {
+            // LIKE: Add my like with my doodle avatar and nickname!
+            reactions[myToken] = {
+              name: state.myName || 'You',
+              avatar: state.myAvatar || 'fox'
+            };
+            if (historyItem) {
+              historyItem.reactions = reactions;
+              saveSessionState();
+            }
+
+            // Burst animation
+            if (contentBox) {
+              const burst = document.createElement('span');
+              burst.className = 'animate-heart-burst select-none text-3xl pointer-events-none absolute z-30';
+              burst.textContent = '❤️';
+              burst.style.left = '50%';
+              burst.style.top = '30%';
+              contentBox.appendChild(burst);
+              setTimeout(() => burst.remove(), 720);
+            }
+
+            if (navigator.vibrate) {
+              try { navigator.vibrate(25); } catch (e) {}
+            }
+
+            if (msgWrapper) {
+              renderReactionBadge(msgWrapper, reactions, msgId);
+            }
+
+            sendEncrypted({
+              type: 'msg_reaction',
+              msgId: msgId,
+              action: 'like',
+              userToken: myToken,
+              name: state.myName,
+              avatar: state.myAvatar
+            });
+          }
+        } else if (remoteData) {
+          // Incoming reaction from partner over WebRTC
+          const partnerToken = remoteData.userToken || state.partnerToken || 'partner';
+          if (remoteData.action === 'like') {
+            reactions[partnerToken] = {
+              name: remoteData.name || state.partnerName || 'Friend',
+              avatar: remoteData.avatar || state.partnerAvatar || 'panda'
+            };
+            // Burst animation
+            if (contentBox) {
+              const burst = document.createElement('span');
+              burst.className = 'animate-heart-burst select-none text-3xl pointer-events-none absolute z-30';
+              burst.textContent = '❤️';
+              burst.style.left = '50%';
+              burst.style.top = '30%';
+              contentBox.appendChild(burst);
+              setTimeout(() => burst.remove(), 720);
+            }
+          } else if (remoteData.action === 'unlike') {
+            delete reactions[partnerToken];
+          }
+
+          if (historyItem) {
+            historyItem.reactions = reactions;
+            saveSessionState();
+          }
+          if (msgWrapper) {
+            renderReactionBadge(msgWrapper, reactions, msgId);
+          }
+        }
+      }
+
+      function setupMessageInteractions(wrapper, msg) {
+        const swipeTarget = wrapper.querySelector('.msg-swipe-target');
+        const quickReplyBtn = wrapper.querySelector('.quick-reply-btn');
+        const quoteEl = wrapper.querySelector('.msg-reply-quote');
+        const isMe = msg.sender === 'me';
+
+        // Render existing reactions with doodle avatars if any
+        if (msg.reactions && Object.keys(msg.reactions).length > 0) {
+          renderReactionBadge(wrapper, msg.reactions, msg.id);
+        }
+
+        // Quote click scrolls smoothly to the referenced message
+        if (quoteEl && msg.replyTo && msg.replyTo.id) {
+          quoteEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            scrollToMessage(msg.replyTo.id);
+          });
+        }
+
+        // Desktop hover quick-reply button
+        if (quickReplyBtn) {
+          quickReplyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setReplyTarget({
+              id: msg.id,
+              name: isMe ? 'You' : msg.name,
+              text: msg.text || (msg.dataUrl ? '📷 Photo' : 'Card')
+            });
+          });
+        }
+
+        // Swipe-To-Reply and Double-Tap Gestures
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+        let isScrolling = false;
+        let lastTap = 0;
+
+        if (swipeTarget) {
+          swipeTarget.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = false;
+            isScrolling = false;
+            swipeTarget.style.transition = 'none';
+          }, { passive: true });
+
+          swipeTarget.addEventListener('touchmove', (e) => {
+            if (isScrolling || e.touches.length !== 1) return;
+            const touchX = e.touches[0].clientX;
+            const touchY = e.touches[0].clientY;
+            const dx = touchX - touchStartX;
+            const dy = touchY - touchStartY;
+
+            if (!isSwiping) {
+              if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) {
+                isScrolling = true;
+                return;
+              }
+              if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
+                isSwiping = true;
+              }
+            }
+
+            if (isSwiping && dx > 0) {
+              const moveX = Math.min(dx * 0.45, 55);
+              swipeTarget.style.transform = `translateX(${moveX}px)`;
+              if (moveX >= 32) {
+                wrapper.classList.add('swipe-reply-active');
+              } else {
+                wrapper.classList.remove('swipe-reply-active');
+              }
+            }
+          }, { passive: true });
+
+          swipeTarget.addEventListener('touchend', (e) => {
+            if (isSwiping) {
+              const triggered = wrapper.classList.contains('swipe-reply-active');
+              swipeTarget.style.transition = 'transform 0.22s cubic-bezier(0.2, 0, 0, 1)';
+              swipeTarget.style.transform = 'translateX(0px)';
+              wrapper.classList.remove('swipe-reply-active');
+
+              if (triggered) {
+                if (navigator.vibrate) try { navigator.vibrate(20); } catch (err) {}
+                setReplyTarget({
+                  id: msg.id,
+                  name: isMe ? 'You' : msg.name,
+                  text: msg.text || (msg.dataUrl ? '📷 Photo' : 'Card')
+                });
+                return;
+              }
+            }
+
+            // Double tap heart detection on touch
+            const now = Date.now();
+            const timeDiff = now - lastTap;
+            if (timeDiff > 25 && timeDiff < 320) {
+              lastTap = 0;
+              toggleHeartReaction(msg.id, true);
+            } else {
+              lastTap = now;
+            }
+          });
+
+          // Desktop double click for heart reaction
+          swipeTarget.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            toggleHeartReaction(msg.id, true);
+          });
+        }
+      }
+
       function appendChatMessage(msg, save = true) {
+        msg.id = msg.id || ('msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+        msg.reactions = msg.reactions || {};
         const isMe = msg.sender === 'me';
         const wrapper = document.createElement('div');
-        wrapper.className = `flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-pop`;
+        wrapper.className = `msg-swipe-wrapper relative flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-pop`;
+        wrapper.setAttribute('data-msg-id', msg.id);
 
         const bubbleBg = isMe ? 'bg-[#FFF9DB]' : 'bg-white';
+
+        let replyHtml = '';
+        if (msg.replyTo && msg.replyTo.text) {
+          replyHtml = `
+            <div class="msg-reply-quote mb-1.5 px-2.5 py-1 bg-black/5 hover:bg-black/10 border-l-2 border-[#2B2623] rounded text-xs select-none cursor-pointer transition-colors">
+              <span class="font-bold text-[#2B2623] block text-[10px] leading-tight">↩️ ${escapeHtml(msg.replyTo.name)}</span>
+              <span class="text-[#6E655F] font-hand text-xs truncate block leading-tight">${escapeHtml(msg.replyTo.text)}</span>
+            </div>
+          `;
+        }
+
         wrapper.innerHTML = `
+          <!-- Swipe Reply Cue -->
+          <div class="swipe-reply-cue">↩️</div>
+
           <div class="w-8 h-8 p-1 sketch-pill bg-white flex items-center justify-center shrink-0 select-none">
             ${getAvatarSvgHtml(msg.avatar)}
           </div>
-          <div class="max-w-[76%] ${bubbleBg} sketch-box px-3.5 py-2">
-            <div class="flex items-center justify-between gap-3 text-[11px] font-ui text-[#6E655F] mb-0.5">
-              <span class="font-semibold text-[#2B2623]">${escapeHtml(isMe ? 'You' : msg.name)}</span>
-              <span>${escapeHtml(msg.time)}</span>
+
+          <div class="msg-swipe-target max-w-[76%]">
+            <div class="msg-content-box relative ${bubbleBg} sketch-box px-3.5 py-2">
+              ${replyHtml}
+              <div class="flex items-center justify-between gap-3 text-[11px] font-ui text-[#6E655F] mb-0.5">
+                <span class="font-semibold text-[#2B2623]">${escapeHtml(isMe ? 'You' : msg.name)}</span>
+                <span>${escapeHtml(msg.time)}</span>
+              </div>
+              <p class="text-base font-hand text-[#2B2623] leading-snug break-words">${escapeHtml(msg.text)}</p>
             </div>
-            <p class="text-base font-hand text-[#2B2623] leading-snug break-words">${escapeHtml(msg.text)}</p>
           </div>
+
+          <!-- Quick reply for desktop hover -->
+          <button type="button" class="quick-reply-btn sketch-btn w-6 h-6 rounded-full bg-[#FFE46B] text-[11px] flex items-center justify-center shrink-0 self-center" title="Reply">
+            ↩️
+          </button>
         `;
+
+        setupMessageInteractions(wrapper, msg);
+
         chatStream.appendChild(wrapper);
         scrollToBottom();
 
@@ -1309,30 +1656,66 @@
       }
 
       function appendPhotoMessage(msg, save = true) {
+        msg.id = msg.id || ('msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+        msg.reactions = msg.reactions || {};
         const isMe = msg.sender === 'me';
         const wrapper = document.createElement('div');
-        wrapper.className = `flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-pop`;
+        wrapper.className = `msg-swipe-wrapper relative flex items-end gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-pop`;
+        wrapper.setAttribute('data-msg-id', msg.id);
+
+        let replyHtml = '';
+        if (msg.replyTo && msg.replyTo.text) {
+          replyHtml = `
+            <div class="msg-reply-quote mb-1.5 px-2.5 py-1 bg-black/5 hover:bg-black/10 border-l-2 border-[#2B2623] rounded text-xs select-none cursor-pointer transition-colors">
+              <span class="font-bold text-[#2B2623] block text-[10px] leading-tight">↩️ ${escapeHtml(msg.replyTo.name)}</span>
+              <span class="text-[#6E655F] font-hand text-xs truncate block leading-tight">${escapeHtml(msg.replyTo.text)}</span>
+            </div>
+          `;
+        }
 
         wrapper.innerHTML = `
+          <!-- Swipe Reply Cue -->
+          <div class="swipe-reply-cue">↩️</div>
+
           <div class="w-8 h-8 p-1 sketch-pill bg-white flex items-center justify-center shrink-0 select-none">
             ${getAvatarSvgHtml(msg.avatar)}
           </div>
-          <div class="polaroid-frame max-w-[230px] cursor-pointer group">
-            <div class="flex items-center justify-between text-[11px] font-ui text-[#6E655F] mb-1">
-              <span class="font-semibold text-[#2B2623]">📷 ${escapeHtml(isMe ? 'Your Snap' : msg.name)}</span>
-              <span>${escapeHtml(msg.time)}</span>
+
+          <div class="msg-swipe-target max-w-[240px]">
+            <div class="msg-content-box polaroid-frame cursor-pointer group relative">
+              ${replyHtml}
+              <div class="flex items-center justify-between text-[11px] font-ui text-[#6E655F] mb-1">
+                <span class="font-semibold text-[#2B2623]">📷 ${escapeHtml(isMe ? 'Your Snap' : msg.name)}</span>
+                <span>${escapeHtml(msg.time)}</span>
+              </div>
+              <img src="${msg.dataUrl}" alt="Shared photo" class="w-full max-h-48 object-cover rounded border border-[#2B2623]" />
+              <p class="font-title text-xl text-center text-[#2B2623] mt-1 leading-none">${escapeHtml(msg.caption || 'Tap to view full size')}</p>
             </div>
-            <img src="${msg.dataUrl}" alt="Shared photo" class="w-full max-h-48 object-cover rounded border border-[#2B2623]" />
-            <p class="font-title text-xl text-center text-[#2B2623] mt-1 leading-none">${escapeHtml(msg.caption || 'Tap to view full size')}</p>
           </div>
+
+          <!-- Quick reply for desktop hover -->
+          <button type="button" class="quick-reply-btn sketch-btn w-6 h-6 rounded-full bg-[#FFE46B] text-[11px] flex items-center justify-center shrink-0 self-center" title="Reply">
+            ↩️
+          </button>
         `;
 
-        const polaroid = wrapper.querySelector('.polaroid-frame');
-        polaroid.addEventListener('click', () => {
-          el.lightboxImg.src = msg.dataUrl;
-          el.lightboxCaption.textContent = `${isMe ? 'Shared by You' : 'Shared by ' + msg.name} • ${msg.time}`;
-          el.photoLightboxModal.classList.remove('hidden');
-        });
+        const polaroidImg = wrapper.querySelector('img');
+        let polaroidClickTimer = null;
+        if (polaroidImg) {
+          polaroidImg.addEventListener('click', (e) => {
+            if (e.detail === 2) {
+              clearTimeout(polaroidClickTimer);
+              return;
+            }
+            polaroidClickTimer = setTimeout(() => {
+              el.lightboxImg.src = msg.dataUrl;
+              el.lightboxCaption.textContent = `${isMe ? 'Shared by You' : 'Shared by ' + msg.name} • ${msg.time}`;
+              el.photoLightboxModal.classList.remove('hidden');
+            }, 240);
+          });
+        }
+
+        setupMessageInteractions(wrapper, msg);
 
         chatStream.appendChild(wrapper);
         scrollToBottom();
@@ -1377,21 +1760,28 @@
 
             const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78);
             const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const replyTarget = state.replyingTo;
+            cancelReply();
+            const newMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
             appendPhotoMessage({
+              id: newMsgId,
               sender: 'me',
               name: state.myName,
               avatar: state.myAvatar,
               dataUrl: compressedDataUrl,
               caption: 'Notebook Snap ✨',
-              time: timeStr
+              time: timeStr,
+              replyTo: replyTarget
             });
 
             const sent = await sendEncrypted({
               type: 'photo_msg',
+              id: newMsgId,
               dataUrl: compressedDataUrl,
               caption: `Snap from ${state.myName} ✨`,
-              time: timeStr
+              time: timeStr,
+              replyTo: replyTarget
             });
 
             if (!sent && !state.partnerOnline) {
@@ -1829,20 +2219,32 @@
         sendEncrypted({ type: 'typing', isTyping: false });
 
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const replyTarget = state.replyingTo;
+        cancelReply();
+        const newMsgId = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+
         appendChatMessage({
+          id: newMsgId,
           sender: 'me',
           name: state.myName,
           avatar: state.myAvatar,
           text,
-          time: timeStr
+          time: timeStr,
+          replyTo: replyTarget
         });
 
         sendEncrypted({
           type: 'chat_msg',
+          id: newMsgId,
           text,
-          time: timeStr
+          time: timeStr,
+          replyTo: replyTarget
         });
       });
+
+      if (el.cancelReplyBtn) {
+        el.cancelReplyBtn.addEventListener('click', cancelReply);
+      }
 
       // Photo Sharing Events
       el.sharePhotoBtn.addEventListener('click', () => {
