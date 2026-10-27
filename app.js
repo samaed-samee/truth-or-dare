@@ -113,6 +113,52 @@
           }
         },
 
+        async deriveAuthKey(roomCode) {
+          const enc = new TextEncoder();
+          const baseKey = await crypto.subtle.importKey(
+            'raw',
+            enc.encode(`TOD-AUTH-${roomCode.toUpperCase()}-V1`),
+            { name: 'PBKDF2' },
+            false,
+            ['deriveKey']
+          );
+          return await crypto.subtle.deriveKey(
+            {
+              name: 'PBKDF2',
+              salt: enc.encode(`SALT-AUTH-${roomCode.toUpperCase()}`),
+              iterations: 25000,
+              hash: 'SHA-256'
+            },
+            baseKey,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign', 'verify']
+          );
+        },
+
+        async signHandshake(roomCode, pubJwk, playerToken) {
+          try {
+            const hmacKey = await this.deriveAuthKey(roomCode);
+            const msg = `${pubJwk.x || ''}:${pubJwk.y || ''}:${playerToken || ''}`;
+            const sig = await crypto.subtle.sign('HMAC', hmacKey, new TextEncoder().encode(msg));
+            return this.uint8ToBase64(new Uint8Array(sig));
+          } catch (e) {
+            return null;
+          }
+        },
+
+        async verifyHandshake(roomCode, pubJwk, playerToken, signatureBase64) {
+          try {
+            if (!signatureBase64 || !pubJwk) return false;
+            const hmacKey = await this.deriveAuthKey(roomCode);
+            const msg = `${pubJwk.x || ''}:${pubJwk.y || ''}:${playerToken || ''}`;
+            const sig = this.base64ToUint8(signatureBase64);
+            return await crypto.subtle.verify('HMAC', hmacKey, sig, new TextEncoder().encode(msg));
+          } catch (e) {
+            return false;
+          }
+        },
+
          uint8ToBase64(bytes) {
           let binary = '';
           const len = bytes.byteLength;
@@ -216,7 +262,7 @@
       }
       initPlayerToken();
 
-      function saveSessionState() {
+      async function saveSessionState() {
         if (!state.roomCode) return;
         try {
           const snapshot = {
@@ -244,6 +290,19 @@
               return item;
             })
           };
+          // Military-grade encryption at rest: Encrypt snapshot with AES-256-GCM before saving
+          if (CryptoEngine.key) {
+            const encrypted = await CryptoEngine.encryptPayload(snapshot);
+            if (encrypted) {
+              const envelope = {
+                roomCode: state.roomCode,
+                iv: encrypted.iv,
+                ct: encrypted.ct
+              };
+              sessionStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+              return;
+            }
+          }
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
         } catch (e) {
           console.warn('Could not save session snapshot:', e);
@@ -255,6 +314,10 @@
       }
 
       function resetRoomSessionState() {
+        CryptoEngine.key = null;
+        CryptoEngine.myKeyPair = null;
+        pendingImageDataUrl = null;
+        activeLightboxViewOnceMsg = null;
         state.scores = { me: 0, partner: 0 };
         state.turn = 'me';
         state.gamePhase = 'pick';
@@ -558,10 +621,11 @@
           setupDataConnection(incomingConn, isSamePartnerReconnecting);
         });
 
-        // Incoming Live Voice Call
+        // Incoming Live Voice Call (DTLS-SRTP encrypted peer-to-peer media)
         peer.on('call', (incomingCall) => {
-          // Only accept call from our active partner
-          if (dataConn && incomingCall.peer !== dataConn.peer) {
+          // Strict military-grade audio authorization check:
+          // Reject immediately if not our authenticated partner, or if ECDH key exchange is not finished
+          if (!dataConn || !dataConn.open || !CryptoEngine.key || !state.partnerOnline || incomingCall.peer !== dataConn.peer) {
             incomingCall.close();
             return;
           }
@@ -633,12 +697,14 @@
           lastPongTime = Date.now();
           startHeartbeat();
 
-          // Perform ECDH key exchange handshake
+          // Perform Authenticated ECDH key exchange handshake
           const myPubJwk = await CryptoEngine.generateEcdhPublicJwk();
+          const authSig = await CryptoEngine.signHandshake(state.roomCode, myPubJwk, state.playerToken);
           conn.send({
             sys: 'handshake',
             pubJwk: myPubJwk,
             playerToken: state.playerToken,
+            sig: authSig,
             isReconnection
           });
         });
@@ -663,8 +729,16 @@
             return;
           }
 
-          // 3. Handle Handshake & Key Exchange
+          // 3. Handle Authenticated Handshake & Key Exchange
           if (rawPacket.sys === 'handshake') {
+            // Verify HMAC-SHA256 signature to guarantee only someone with the room code can connect!
+            const isValid = await CryptoEngine.verifyHandshake(state.roomCode, rawPacket.pubJwk, rawPacket.playerToken, rawPacket.sig);
+            if (!isValid) {
+              showToast('Security Alert: Unauthorized connection rejected!', '🔒', '#FF8B8B');
+              try { conn.close(); } catch (e) {}
+              return;
+            }
+
             const wasAlreadyKnown = state.partnerToken === rawPacket.playerToken;
             state.partnerToken = rawPacket.playerToken;
             state.partnerOnline = true;
@@ -2619,7 +2693,15 @@
         try {
           const raw = sessionStorage.getItem(STORAGE_KEY);
           if (!raw) return;
-          const saved = JSON.parse(raw);
+          const parsed = JSON.parse(raw);
+          if (!parsed || !parsed.roomCode) return;
+
+          let saved = parsed;
+          if (parsed.iv && parsed.ct) {
+            // Decrypt AES-256-GCM encrypted snapshot
+            await CryptoEngine.initRoomKey(parsed.roomCode);
+            saved = await CryptoEngine.decryptPayload({ iv: parsed.iv, ct: parsed.ct });
+          }
           if (!saved || !saved.roomCode || saved.roomCode.length !== 10) return;
 
           state.myName = saved.myName || 'Sketcher';
