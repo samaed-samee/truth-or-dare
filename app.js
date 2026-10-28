@@ -1518,7 +1518,7 @@
               </span>
               <span class="text-[#6E655F]">For ${escapeHtml(targetLabel)}</span>
             </div>
-            <p class="font-title text-2xl font-bold text-[#2B2623] leading-snug">${escapeHtml(card.text)}</p>
+            <p class="font-title text-xl sm:text-2xl font-bold text-[#2B2623] leading-snug break-words break-all" style="overflow-wrap: anywhere; word-break: break-word;">${escapeHtml(card.text)}</p>
           </div>
         `;
         chatStream.appendChild(wrapper);
@@ -1884,7 +1884,7 @@
                 ${!isMe ? `<span class="font-semibold text-[#2B2623]">${escapeHtml(msg.name)}</span>` : ''}
                 <span>${escapeHtml(msg.time)}</span>
               </div>
-              <p class="text-base font-hand text-[#2B2623] leading-snug break-words whitespace-pre-wrap">${escapeHtml(msg.text)}</p>
+              <p class="text-base font-hand text-[#2B2623] leading-snug break-words break-all whitespace-pre-wrap" style="overflow-wrap: anywhere; word-break: break-word;">${escapeHtml(msg.text)}</p>
             </div>
           </div>
 
@@ -2089,7 +2089,7 @@
                   <span>${escapeHtml(msg.time)}</span>
                 </div>
                 <img src="${msg.dataUrl || ''}" alt="Shared photo" draggable="false" oncontextmenu="return false;" class="w-full max-h-48 object-cover rounded border border-[#2B2623]" />
-                <p class="font-title text-xl text-center text-[#2B2623] mt-1 leading-none">${escapeHtml(msg.caption || 'Tap to view full size')}</p>
+                <p class="font-title text-base sm:text-lg text-center text-[#2B2623] mt-1.5 leading-snug break-words break-all max-w-full px-1 overflow-hidden" style="overflow-wrap: anywhere; word-break: break-word;">${escapeHtml(msg.caption || 'Tap to view full size')}</p>
               </div>
             </div>
 
@@ -2504,7 +2504,7 @@
       }
 
       el.sendPromptCardBtn.addEventListener('click', () => {
-        const val = el.customPromptInput.value.trim();
+        const val = el.customPromptInput.value.trim().slice(0, 120);
         if (!val) {
           showToast(`Write a custom ${state.selectedType} first!`, '✏️', '#FFE46B');
           return;
@@ -2623,7 +2623,7 @@
 
       el.chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const text = el.chatMessageInput.value.trim();
+        const text = el.chatMessageInput.value.trim().slice(0, 280);
         if (!text) return;
 
         el.chatMessageInput.value = '';
@@ -2724,7 +2724,7 @@
       if (el.confirmSendPhotoBtn) {
         el.confirmSendPhotoBtn.addEventListener('click', () => {
           if (!pendingImageDataUrl) return;
-          const caption = el.previewCaptionInput ? el.previewCaptionInput.value.trim() : '';
+          const caption = el.previewCaptionInput ? el.previewCaptionInput.value.trim().slice(0, 45) : '';
           const viewOnce = pendingViewOnce;
           if (el.photoPreviewModal) el.photoPreviewModal.classList.add('hidden');
           sendPreparedPhoto(pendingImageDataUrl, caption, viewOnce);
