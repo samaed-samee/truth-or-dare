@@ -326,27 +326,6 @@
 
       <!-- 2. INTERACTIVE TRUTH OR DARE SKETCHBOOK STAGE (Collapsible & Compact-ready) -->
       <section id="game-stage-section" class="shrink-0 px-3 pt-2 pb-1.5 border-b-2 border-dashed border-[#D8D0C2] bg-[#FAF6EE]/90 transition-all duration-200">
-        
-        <!-- Mini Score & Turn Bar (Stable, Compact Single-Line Row) -->
-        <div class="flex items-center justify-between mb-1.5 text-xs font-ui min-h-[28px] overflow-hidden gap-1.5 select-none">
-          <div class="flex items-center gap-1.5 shrink min-w-0">
-            <span id="turn-indicator-pill" class="px-2 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623] text-xs whitespace-nowrap truncate max-w-[115px]">
-              🎲 Pick Turn
-            </span>
-            <button id="spin-pencil-btn" type="button" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full hover:bg-amber-50 active:translate-y-0.5 text-xs whitespace-nowrap shrink-0" title="Spin pencil to pick random turn">
-              ✏️ Spin
-            </button>
-          </div>
-
-          <div class="flex items-center gap-1.5 shrink-0">
-            <span id="score-display" class="px-2 py-0.5 bg-white border border-[#2B2623] rounded-full font-semibold text-xs whitespace-nowrap shrink-0 tracking-wide" title="Score: You : Friend">
-              ⭐ 0 : 0
-            </span>
-            <button id="open-custom-deck-btn" type="button" class="px-2 py-0.5 bg-[#D5C6FF] border border-[#2B2623] rounded-full font-semibold text-xs whitespace-nowrap shrink-0 hover:bg-[#C8B6FF] active:translate-y-0.5" title="Custom Prompts Deck">
-              + Deck
-            </button>
-          </div>
-        </div>
 
         <!-- Dynamic Game Card Container -->
         <div id="game-card-container" class="sketch-box bg-white p-2 sm:p-3 relative overflow-hidden">
@@ -394,14 +373,7 @@
               <span id="compose-badge" class="px-2.5 py-0.5 text-xs font-ui font-bold uppercase border-2 border-[#2B2623] rounded-full bg-[#7EE0C6]">
                 Write a Custom Truth
               </span>
-              <div class="flex items-center gap-1">
-                <button id="random-saved-prompt-btn" type="button" class="text-xs font-ui px-2 py-0.5 bg-[#FFF9DB] border border-[#2B2623] rounded-full">
-                  🎲 Idea from Deck
-                </button>
-                <button id="cancel-compose-btn" type="button" class="text-xs font-ui px-2 py-0.5 bg-gray-100 border border-[#2B2623] rounded-full">
-                  ✕
-                </button>
-              </div>
+              <button id="cancel-compose-btn" type="button" class="text-xs font-ui px-2.5 py-0.5 bg-gray-100 border border-[#2B2623] rounded-full hover:bg-gray-200">✕ Cancel</button>
             </div>
             <div class="flex gap-2">
               <input 
@@ -421,26 +393,30 @@
             </div>
           </div>
 
-          <!-- STATE C: Active Truth or Dare Card on the Table -->
+          <!-- STATE C: Active Truth or Dare Card (Turn Info & Complete Controls) -->
           <div id="stage-active-card" class="hidden animate-card-flip">
-            <div class="flex items-center justify-between mb-1">
-              <span id="active-card-badge" class="px-2.5 py-0.5 text-xs font-ui font-bold uppercase border-2 border-[#2B2623] rounded-full bg-[#7EE0C6]">
-                TRUTH CARD
-              </span>
-              <span id="active-card-target" class="text-xs font-ui text-[#6E655F]">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span id="active-card-badge" class="px-2.5 py-0.5 text-xs font-ui font-bold uppercase border-2 border-[#2B2623] rounded-full bg-[#7EE0C6]">
+                  TRUTH CARD
+                </span>
+                <span id="active-card-turn-pill" class="px-2.5 py-0.5 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#FFE46B] whitespace-nowrap">
+                  🎯 Your Turn
+                </span>
+              </div>
+              <span id="active-card-target" class="text-xs font-ui text-[#6E655F] truncate">
                 For Player
               </span>
             </div>
 
-            <p id="active-card-text" class="font-title text-2xl sm:text-3xl font-bold text-[#2B2623] leading-snug my-1.5 break-words">
-              What is the funniest thing you have ever done?
-            </p>
-
+            <!-- Question is displayed in the chat below. Card shows turn info & complete actions -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5 border-t border-dashed border-[#E0D9CC]">
-              <span id="active-card-instruction" class="text-xs text-[#6E655F] font-hand">Answer in chat, voice, or snap a photo!</span>
+              <span id="active-card-instruction" class="text-xs text-[#6E655F] font-hand">
+                Question sent in chat below! Answer & complete:
+              </span>
               <div id="active-card-actions" class="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
                 <span id="active-card-waiting-pill" class="hidden px-2.5 py-1 bg-[#FFF9DB] border border-[#2B2623] rounded-full text-[11px] font-ui font-semibold text-[#6E655F]">
-                  ⏳ Waiting for friend to verify
+                  ⏳ Waiting for friend
                 </span>
                 <button 
                   id="skip-card-btn" 
@@ -452,12 +428,14 @@
                 <button 
                   id="complete-card-btn" 
                   type="button"
-                  class="sketch-btn px-3 py-1 bg-[#A8E6CF] text-xs font-ui font-semibold"
+                  class="sketch-btn px-3 py-1 bg-[#A8E6CF] hover:bg-[#92DBC3] text-xs font-ui font-semibold"
                 >
-                  Done! +1 ⭐
+                  Done ✓
                 </button>
               </div>
             </div>
+            <!-- Hidden question text placeholder -->
+            <p id="active-card-text" class="hidden"></p>
           </div>
 
         </div>
@@ -536,52 +514,6 @@
         </form>
       </footer>
 
-    </div>
-
-    <!-- ==========================================
-         MODAL 1: CUSTOM PROMPTS NOTEBOOK DECK
-         ========================================== -->
-    <div id="custom-deck-modal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex items-center justify-center p-4">
-      <div class="sketch-card bg-[#FDFBF7] w-full max-w-md max-h-[82vh] flex flex-col p-4 animate-pop">
-        <div class="flex items-center justify-between pb-2 border-b-2 border-[#2B2623]">
-          <h3 class="font-title text-3xl font-bold">✏️ Custom Prompt Deck</h3>
-          <button id="close-deck-modal-btn" type="button" class="sketch-btn w-8 h-8 bg-white font-ui font-bold">✕</button>
-        </div>
-
-        <p class="text-sm text-[#6E655F] mt-2">
-          Add your own clean, fun Truths & Dares to this notebook or tap any prompt to play it immediately!
-        </p>
-
-        <!-- Add New Custom Prompt Form -->
-        <div class="mt-3 p-2.5 bg-white sketch-box space-y-2">
-          <div class="flex gap-2">
-            <select id="new-deck-type" class="sketch-input px-2.5 py-1.5 text-sm font-ui font-semibold bg-[#FFF9DB]">
-              <option value="truth">TRUTH 💬</option>
-              <option value="dare">DARE ⚡</option>
-            </select>
-            <input 
-              id="new-deck-text" 
-              type="text" 
-              maxlength="140" 
-              placeholder="Write your custom truth or dare..." 
-              class="sketch-input flex-1 px-3 py-1.5 text-base font-hand"
-            />
-          </div>
-          <button id="add-to-deck-btn" type="button" class="sketch-btn w-full py-1.5 bg-[#7EE0C6] font-ui font-semibold text-sm">
-            + Save to Our Notebook Deck
-          </button>
-        </div>
-
-        <!-- Filter Tabs -->
-        <div class="flex gap-2 mt-3">
-          <button type="button" data-filter="all" class="deck-filter-btn sketch-pill px-3 py-0.5 text-xs font-ui font-semibold bg-[#FFE46B]">All</button>
-          <button type="button" data-filter="truth" class="deck-filter-btn sketch-pill px-3 py-0.5 text-xs font-ui font-semibold bg-white">Truths 💬</button>
-          <button type="button" data-filter="dare" class="deck-filter-btn sketch-pill px-3 py-0.5 text-xs font-ui font-semibold bg-white">Dares ⚡</button>
-        </div>
-
-        <!-- Scrollable List of Prompts -->
-        <div id="deck-list-container" class="flex-1 overflow-y-auto mt-2 space-y-2 pr-1"></div>
-      </div>
     </div>
 
     <!-- ==========================================

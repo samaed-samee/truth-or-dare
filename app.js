@@ -402,6 +402,7 @@
         sendPromptCardBtn: document.getElementById('send-prompt-card-btn'),
         stageActiveCard: document.getElementById('stage-active-card'),
         activeCardBadge: document.getElementById('active-card-badge'),
+        activeCardTurnPill: document.getElementById('active-card-turn-pill'),
         activeCardTarget: document.getElementById('active-card-target'),
         activeCardText: document.getElementById('active-card-text'),
         activeCardInstruction: document.getElementById('active-card-instruction'),
@@ -1200,15 +1201,12 @@
           }
 
           case 'game_card_complete': {
-            // RULE: Only the question asker can award points!
-            // Partner (question asker) verified my answer and awarded point to me!
-            state.scores.me += 1;
             state.turn = 'me'; // Next round I choose Truth or Dare
             state.activeCard = null;
             state.gamePhase = 'pick';
             renderGameStage();
-            appendSystemEvent(`⭐ You completed the ${data.cardType.toUpperCase()}! (+1 Star awarded by ${state.partnerName})`, 'complete');
-            showToast(`⭐ +1 Star awarded by ${state.partnerName}! Great job!`, '⭐', '#A8E6CF');
+            appendSystemEvent(`✓ You completed the ${data.cardType.toUpperCase()}! Next turn!`, 'complete');
+            showToast(`✓ Completed the ${data.cardType.toUpperCase()}!`, '✨', '#A8E6CF');
             saveSessionState();
             break;
           }
@@ -1336,22 +1334,6 @@
       }
 
       function renderGameStage() {
-        // Scoreboard - stable mini format (never balloons or shrinks)
-        el.scoreDisplay.textContent = `⭐ ${state.scores.me} : ${state.scores.partner}`;
-        el.scoreDisplay.title = `Score: You (${state.scores.me}) — ${state.partnerOnline ? state.partnerName : 'Friend'} (${state.scores.partner})`;
-
-        // Turn Indicator - stable mini format
-        if (state.turn === 'me') {
-          el.turnIndicatorPill.textContent = `🎯 Your Turn`;
-          el.turnIndicatorPill.className = 'px-2 py-0.5 bg-[#7EE0C6] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623] text-xs whitespace-nowrap shrink-0 max-w-[115px] truncate';
-          el.turnIndicatorPill.title = `Your Turn (${state.myName})`;
-        } else {
-          const pName = state.partnerOnline ? state.partnerName : 'Friend';
-          el.turnIndicatorPill.textContent = `🎲 ${pName}'s Turn`;
-          el.turnIndicatorPill.className = 'px-2 py-0.5 bg-[#FFE46B] border-2 border-[#2B2623] rounded-full font-semibold text-[#2B2623] text-xs whitespace-nowrap shrink-0 max-w-[115px] truncate';
-          el.turnIndicatorPill.title = `${pName}'s Turn`;
-        }
-
         el.stagePickMode.classList.add('hidden');
         if (el.stageWaitingPrompt) el.stageWaitingPrompt.classList.add('hidden');
         el.stageComposePrompt.classList.add('hidden');
@@ -1386,7 +1368,7 @@
         } else if (state.gamePhase === 'card' && state.activeCard) {
           el.stageActiveCard.classList.remove('hidden');
           const isTruth = state.activeCard.type === 'truth';
-          el.activeCardBadge.textContent = isTruth ? '💬 TRUTH CARD' : '⚡ DARE CARD';
+          el.activeCardBadge.textContent = isTruth ? '💬 TRUTH' : '⚡ DARE';
           el.activeCardBadge.style.backgroundColor = isTruth ? '#7EE0C6' : '#FF8B8B';
 
           const isTargetMe = state.activeCard.target === 'me';
@@ -1396,30 +1378,38 @@
           const authorLabel = isAuthorMe ? `You (${state.myName})` : state.partnerName;
 
           el.activeCardTarget.textContent = `For ${targetLabel} • Asked by ${authorLabel}`;
-          el.activeCardText.textContent = state.activeCard.text;
+
+          // Turn info badge on card
+          if (el.activeCardTurnPill) {
+            if (isTargetMe) {
+              el.activeCardTurnPill.textContent = '🎯 Your Turn to Answer';
+              el.activeCardTurnPill.className = 'px-2.5 py-0.5 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#7EE0C6] whitespace-nowrap';
+            } else {
+              el.activeCardTurnPill.textContent = `🎲 ${state.partnerName}'s Turn to Answer`;
+              el.activeCardTurnPill.className = 'px-2.5 py-0.5 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#FFE46B] whitespace-nowrap';
+            }
+          }
 
           if (isAuthorMe) {
-            // Question Asker: ONLY question asker can award point!
             if (el.activeCardInstruction) {
-              el.activeCardInstruction.textContent = `Waiting for ${state.partnerName} to answer. Verify & award point:`;
+              el.activeCardInstruction.textContent = `Waiting for ${state.partnerName} to answer in chat. Verify & finish:`;
             }
             if (el.activeCardWaitingPill) el.activeCardWaitingPill.classList.add('hidden');
             el.completeCardBtn.classList.remove('hidden');
-            el.completeCardBtn.textContent = `Done! +1 ⭐ for ${state.partnerName}`;
+            el.completeCardBtn.textContent = 'Done ✓';
             el.skipCardBtn.classList.remove('hidden');
-            el.skipCardBtn.textContent = `Skip 🔄`;
+            el.skipCardBtn.textContent = 'Skip 🔄';
           } else {
-            // Answerer: Cannot give point to themselves!
             if (el.activeCardInstruction) {
-              el.activeCardInstruction.textContent = `Answer in chat, voice 🎙️, or snap 📷!`;
+              el.activeCardInstruction.textContent = 'Answer in chat below, voice 🎙️, or snap 📷!';
             }
             el.completeCardBtn.classList.add('hidden');
             if (el.activeCardWaitingPill) {
               el.activeCardWaitingPill.classList.remove('hidden');
-              el.activeCardWaitingPill.textContent = `⏳ Waiting for ${state.partnerName} to award star`;
+              el.activeCardWaitingPill.textContent = `⏳ Waiting for ${state.partnerName} to confirm`;
             }
             el.skipCardBtn.classList.remove('hidden');
-            el.skipCardBtn.textContent = `Pass / Skip 🔄`;
+            el.skipCardBtn.textContent = 'Pass 🔄';
           }
         }
       }
@@ -2437,18 +2427,20 @@
         sendEncrypted({ type: 'game_compose_cancel' });
       });
 
-      el.randomSavedPromptBtn.addEventListener('click', () => {
-        const matching = state.customDeck.filter(d => d.type === state.selectedType);
-        if (matching.length > 0) {
-          const pick = matching[Math.floor(Math.random() * matching.length)];
-          el.customPromptInput.value = pick.text;
-        }
-      });
+      if (el.randomSavedPromptBtn) {
+        el.randomSavedPromptBtn.addEventListener('click', () => {
+          const matching = state.customDeck.filter(d => d.type === state.selectedType);
+          if (matching.length > 0) {
+            const pick = matching[Math.floor(Math.random() * matching.length)];
+            el.customPromptInput.value = pick.text;
+          }
+        });
+      }
 
       el.sendPromptCardBtn.addEventListener('click', () => {
         const val = el.customPromptInput.value.trim();
         if (!val) {
-          showToast(`Write a custom ${state.selectedType} or tap 'Idea from Deck'!`, '✏️', '#FFE46B');
+          showToast(`Write a custom ${state.selectedType} first!`, '✏️', '#FFE46B');
           return;
         }
         el.customPromptInput.value = '';
@@ -2465,15 +2457,12 @@
       el.completeCardBtn.addEventListener('click', () => {
         if (!state.activeCard) return;
 
-        // RULE: ONLY the person who asked the question can award points!
         if (state.activeCard.author !== 'me') {
-          showToast('Only the person who asked the question can award points! ⭐', '⚠️', '#FF8B8B');
+          showToast('Only the person who asked the question can confirm completion!', '⚠️', '#FF8B8B');
           return;
         }
 
         const cType = state.activeCard.type;
-        // Award point to the partner (who answered the question)
-        state.scores.partner += 1;
         const winnerName = state.partnerName;
 
         // Next turn goes to the partner who just answered!
@@ -2481,7 +2470,7 @@
         state.activeCard = null;
         state.gamePhase = 'pick';
         renderGameStage();
-        appendSystemEvent(`⭐ ${winnerName} completed the ${cType.toUpperCase()}! (+1 Star awarded by ${state.myName})`, 'complete');
+        appendSystemEvent(`✓ ${winnerName} completed the ${cType.toUpperCase()}! Next turn!`, 'complete');
         saveSessionState();
 
         sendEncrypted({
@@ -2508,58 +2497,18 @@
         });
       });
 
-      el.spinPencilBtn.addEventListener('click', () => {
-        const nextTurn = Math.random() < 0.5 ? 'me' : 'partner';
-        state.turn = nextTurn;
-        state.gamePhase = 'pick';
-        renderGameStage();
-        const who = nextTurn === 'me' ? `Your (${state.myName})` : `${state.partnerOnline ? state.partnerName : 'Friend'}'s`;
-        appendSystemEvent(`✏️ Pencil spun! It landed on ${who} turn!`, 'game');
-        showToast(`Pencil landed on ${who} turn!`, '✏️', '#FFE46B');
-        sendEncrypted({ type: 'spin_turn', nextTurn });
-      });
-
-      // Custom Prompt Deck Modal
-      el.openCustomDeckBtn.addEventListener('click', () => {
-        renderDeckList();
-        el.customDeckModal.classList.remove('hidden');
-      });
-      el.closeDeckModalBtn.addEventListener('click', () => {
-        el.customDeckModal.classList.add('hidden');
-      });
-
-      document.querySelectorAll('.deck-filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          state.deckFilter = btn.dataset.filter;
-          document.querySelectorAll('.deck-filter-btn').forEach(b => {
-            b.classList.remove('bg-[#FFE46B]');
-            b.classList.add('bg-white');
-          });
-          btn.classList.remove('bg-white');
-          btn.classList.add('bg-[#FFE46B]');
-          renderDeckList();
+      if (el.spinPencilBtn) {
+        el.spinPencilBtn.addEventListener('click', () => {
+          const nextTurn = Math.random() < 0.5 ? 'me' : 'partner';
+          state.turn = nextTurn;
+          state.gamePhase = 'pick';
+          renderGameStage();
+          const who = nextTurn === 'me' ? `Your (${state.myName})` : `${state.partnerOnline ? state.partnerName : 'Friend'}'s`;
+          appendSystemEvent(`✏️ Pencil spun! It landed on ${who} turn!`, 'game');
+          showToast(`Pencil landed on ${who} turn!`, '✏️', '#FFE46B');
+          sendEncrypted({ type: 'spin_turn', nextTurn });
         });
-      });
-
-      el.addToDeckBtn.addEventListener('click', () => {
-        const text = el.newDeckText.value.trim();
-        const type = el.newDeckType.value;
-        if (!text) {
-          showToast('Please type your custom Truth or Dare first!', '✏️', '#FF8B8B');
-          return;
-        }
-        const newItem = {
-          id: 'cust_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-          type,
-          text
-        };
-        state.customDeck.unshift(newItem);
-        el.newDeckText.value = '';
-        renderDeckList();
-        saveSessionState();
-        showToast('Saved to your notebook deck!', '📒', '#A8E6CF');
-        sendEncrypted({ type: 'deck_add', item: newItem });
-      });
+      }
 
       // Chat & Typing Events
       let myTypingTimer = null;
