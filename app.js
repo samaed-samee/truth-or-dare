@@ -2746,6 +2746,24 @@
         });
       }
 
+      function exitAndroidApp() {
+        if (window.AndroidBridge && typeof window.AndroidBridge.exitApp === 'function') {
+          window.AndroidBridge.exitApp();
+          return;
+        }
+        if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.exitApp === 'function') {
+          window.Capacitor.Plugins.App.exitApp();
+          return;
+        }
+        if (window.Capacitor && typeof window.Capacitor.nativePromise === 'function') {
+          window.Capacitor.nativePromise('App', 'exitApp', {});
+          return;
+        }
+        if (navigator.app && typeof navigator.app.exitApp === 'function') {
+          navigator.app.exitApp();
+        }
+      }
+
       // App Exit Confirmation Modal (Mobile Back Button)
       if (el.cancelExitAppBtn) {
         el.cancelExitAppBtn.addEventListener('click', () => {
@@ -2754,17 +2772,16 @@
       }
 
       if (el.confirmExitAppBtn) {
-        el.confirmExitAppBtn.addEventListener('click', async () => {
+        el.confirmExitAppBtn.addEventListener('click', () => {
           if (el.appExitModal) el.appExitModal.classList.add('hidden');
-          try {
-            if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('App')) {
-              const { App } = await import('@capacitor/app');
-              await App.exitApp();
-              return;
-            }
-          } catch (e) {}
-          if (navigator.app && navigator.app.exitApp) {
-            navigator.app.exitApp();
+          exitAndroidApp();
+        });
+      }
+
+      if (el.appExitModal) {
+        el.appExitModal.addEventListener('click', (e) => {
+          if (e.target === el.appExitModal) {
+            el.appExitModal.classList.add('hidden');
           }
         });
       }
@@ -2819,24 +2836,32 @@
         }
       }
 
-      // Register Capacitor Hardware Back Button Listener
-      (async function setupBackButtonListener() {
-        try {
-          if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('App')) {
-            const { App } = await import('@capacitor/app');
-            App.addListener('backButton', () => {
-              handleHardwareBackButton();
-            });
-          }
-        } catch (e) {
-          console.warn('Capacitor App plugin listener setup:', e);
-        }
+      // Expose globally for Android WebView Bridge
+      window.handleHardwareBackButton = handleHardwareBackButton;
 
-        // Browser / PWA popstate safety net
-        window.addEventListener('popstate', () => {
-          handleHardwareBackButton();
-        });
-      })();
+      // Register Hardware Back Button Listeners
+      document.addEventListener('backbutton', () => {
+        handleHardwareBackButton();
+      });
+
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App && typeof window.Capacitor.Plugins.App.addListener === 'function') {
+        try {
+          window.Capacitor.Plugins.App.addListener('backButton', () => {
+            handleHardwareBackButton();
+          });
+        } catch (e) {}
+      } else if (window.Capacitor && typeof window.Capacitor.addListener === 'function') {
+        try {
+          window.Capacitor.addListener('App', 'backButton', () => {
+            handleHardwareBackButton();
+          });
+        } catch (e) {}
+      }
+
+      // Browser / PWA popstate safety net
+      window.addEventListener('popstate', () => {
+        handleHardwareBackButton();
+      });
 
       /* ----------------------------------------------------------
          13. AUTO-RESTORE SESSION IF PAGE WAS MINIMIZED / RELOADED

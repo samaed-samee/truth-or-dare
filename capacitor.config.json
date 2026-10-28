@@ -8,6 +8,9 @@
       "style": "DARK",
       "backgroundColor": "#000000",
       "overlaysWebView": false
+    },
+    "App": {
+      "disableBackButtonHandler": true
     }
   },
   "server": {
