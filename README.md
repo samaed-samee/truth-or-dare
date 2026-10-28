@@ -3,9 +3,11 @@
 > A cozy, hand-drawn sketch-style web app for two friends to play Truth or Dare in real time — featuring private peer-to-peer WebRTC networking, end-to-end encryption (E2EE), live voice chat, custom prompt decks, and instant polaroid snap sharing.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-2ea44f?style=for-the-badge&logo=github)](https://samaed-samee.github.io/truth-or-dare/)
+[![Download Android APK](https://img.shields.io/badge/Download-Android%20APK-brightgreen?style=for-the-badge&logo=android)](https://github.com/samaed-samee/truth-or-dare/raw/main/apk/TruthOrDare.apk)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-👉 **Live Web App**: [https://samaed-samee.github.io/truth-or-dare/](https://samaed-samee.github.io/truth-or-dare/)
+👉 **Live Web App**: [https://samaed-samee.github.io/truth-or-dare/](https://samaed-samee.github.io/truth-or-dare/)  
+📱 **Direct Android APK**: [Download TruthOrDare.apk](https://github.com/samaed-samee/truth-or-dare/raw/main/apk/TruthOrDare.apk) *(Android 11 to 15 Ready)*
 
 ---
 
@@ -14,6 +16,37 @@
 **Doodle Truth or Dare** transforms the classic party game into an intimate, interactive sketchbook designed specifically for two players. Built with a hand-drawn notebook aesthetic, warm color palette, and bouncy micro-animations, the entire app runs directly in the browser as a standalone, serverless application with zero backend requirements.
 
 All communications—including chat messages, truth/dare cards, and photos—flow directly between peers over **WebRTC** and are safeguarded with **AES-GCM 256-bit End-to-End Encryption**.
+
+---
+
+## 📱 Android Application (Capacitor)
+
+Doodle Truth or Dare is also available as a standalone native Android application powered by **Capacitor 8** and **Android Gradle Plugin 8.9 / Gradle 9.0**.
+
+### 📥 Direct APK Download
+- **[TruthOrDare.apk](https://github.com/samaed-samee/truth-or-dare/raw/main/apk/TruthOrDare.apk)** (Direct download • ~4.9 MB)
+
+### 🌟 Native Android Highlights:
+- **Zero Server Storage**: Everything remains strictly peer-to-peer (P2P). No databases, no external storage.
+- **Pure Black Status Bar**: Custom `Color.BLACK` status bar with crisp white system indicators (battery, network, clock).
+- **Sketch-Style Exit Confirmation**: Intercepts Android gesture and hardware back button with a cozy hand-drawn exit dialog.
+- **On-Demand Permissions**: Microphone and camera permissions are requested only when tapped (fully compliant with Android 11 to 15 package visibility).
+- **In-App Media**: Direct support for camera capture and gallery photo selection.
+
+### 🛠️ Building & Syncing Android Locally:
+
+```bash
+# 1. Sync web assets (HTML/CSS/JS) to Android:
+npm run sync
+# or: npx cap sync
+
+# 2. Build debug APK directly from command line:
+cd android
+.\gradlew.bat assembleDebug
+
+# Output APK path:
+# android/app/build/outputs/apk/debug/app-debug.apk
+```
 
 ---
 
@@ -76,6 +109,7 @@ All communications—including chat messages, truth/dare cards, and photos—flo
 | **PeerJS (WebRTC)** | P2P data channels and live audio streaming |
 | **Web Crypto API (`crypto.subtle`)** | ECDH P-256 key exchange and AES-GCM 256-bit encryption |
 | **HTML5 Canvas** | Client-side photo resizing and JPEG compression |
+| **Capacitor 8** | Standalone native Android runtime bridge |
 | **Google Fonts** | `Caveat`, `Fredoka`, and `Patrick Hand` |
 
 ---
@@ -150,10 +184,14 @@ flowchart LR
 
 ```
 truth-or-dare/
-├── index.html        # App markup, screens, header, game stage, and modals
-├── style.css         # Notebook theme, doodle animations, and sketch UI styles
-├── app.js            # P2P WebRTC engine, E2EE crypto, voice, and game logic
-└── README.md         # Documentation & guide
+├── apk/
+│   └── TruthOrDare.apk   # Pre-built Android debug APK
+├── android/              # Native Android Capacitor project
+├── index.html            # App markup, screens, header, game stage, and modals
+├── style.css             # Notebook theme, doodle animations, and sketch UI styles
+├── app.js                # P2P WebRTC engine, E2EE crypto, voice, and game logic
+├── capacitor.config.json # Capacitor runtime configuration
+└── README.md             # Documentation & guide
 ```
 
 ### Source Code Architecture
@@ -161,13 +199,14 @@ truth-or-dare/
 - **`index.html`**:
   - **Lobby Screen (`#lobby-screen`)**: Avatar selection grid, nickname input, room generator, and 10-character code input.
   - **Room Screen (`#room-screen`)**: Pinned header, collapsible game stage, chat stream, and message input.
-  - **Modals**: Custom Prompt Deck editor, Fullscreen Photo Lightbox, and Leave Confirmation.
+  - **Modals**: Custom Prompt Deck editor, Fullscreen Photo Lightbox, App Exit Confirmation, and Leave Confirmation.
 - **`app.js`**:
   - `CryptoEngine`: AES-GCM 256 / ECDH P-256 implementation.
   - `startNetworkSession`: PeerJS initialization, WebRTC connection, reconnection retry loops, and heartbeat ping/pong.
   - `toggleMyMicrophone`: Live WebRTC media stream audio controls.
   - `compressAndSendImage`: HTML5 Canvas compression and chunked transfer.
   - `syncVisualViewport`: Window visual viewport synchronization and mobile keyboard adjustments.
+  - `handleHardwareBackButton`: Android hardware/gesture back navigation handler.
 
 ---
 
