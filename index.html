@@ -643,6 +643,27 @@
     </div>
 
     <!-- ==========================================
+         MODAL 4: APP EXIT CONFIRMATION (Mobile Back Button)
+         ========================================== -->
+    <div id="app-exit-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div class="sketch-card bg-[#FDFBF7] w-full max-w-xs p-4 text-center space-y-3 animate-pop">
+        <div class="text-4xl">🚪</div>
+        <h3 class="font-title text-3xl font-bold">Exit Truth or Dare?</h3>
+        <p class="text-sm text-[#6E655F]">
+          Are you sure you want to exit the app?
+        </p>
+        <div class="flex gap-2 pt-1">
+          <button id="cancel-exit-app-btn" type="button" class="sketch-btn flex-1 py-2 bg-white font-ui font-semibold text-sm">
+            Stay
+          </button>
+          <button id="confirm-exit-app-btn" type="button" class="sketch-btn flex-1 py-2 bg-[#FF8B8B] font-ui font-semibold text-sm">
+            Exit App
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
          FLOATING TOAST NOTIFICATION
          ========================================== -->
     <div id="toast-container" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-1.5 w-[90%] max-w-xs"></div>

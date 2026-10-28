@@ -518,6 +518,9 @@
         leaveConfirmModal: document.getElementById('leave-confirm-modal'),
         cancelLeaveBtn: document.getElementById('cancel-leave-btn'),
         confirmLeaveBtn: document.getElementById('confirm-leave-btn'),
+        appExitModal: document.getElementById('app-exit-modal'),
+        cancelExitAppBtn: document.getElementById('cancel-exit-app-btn'),
+        confirmExitAppBtn: document.getElementById('confirm-exit-app-btn'),
         toastContainer: document.getElementById('toast-container'),
         remoteAudio: document.getElementById('remote-audio')
       };
@@ -2742,6 +2745,98 @@
           if (e.target === el.photoLightboxModal) closePhotoLightbox();
         });
       }
+
+      // App Exit Confirmation Modal (Mobile Back Button)
+      if (el.cancelExitAppBtn) {
+        el.cancelExitAppBtn.addEventListener('click', () => {
+          if (el.appExitModal) el.appExitModal.classList.add('hidden');
+        });
+      }
+
+      if (el.confirmExitAppBtn) {
+        el.confirmExitAppBtn.addEventListener('click', async () => {
+          if (el.appExitModal) el.appExitModal.classList.add('hidden');
+          try {
+            if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('App')) {
+              const { App } = await import('@capacitor/app');
+              await App.exitApp();
+              return;
+            }
+          } catch (e) {}
+          if (navigator.app && navigator.app.exitApp) {
+            navigator.app.exitApp();
+          }
+        });
+      }
+
+      function handleHardwareBackButton() {
+        // Priority 1: Lightbox modal open -> close lightbox
+        if (el.photoLightboxModal && !el.photoLightboxModal.classList.contains('hidden')) {
+          closePhotoLightbox();
+          return;
+        }
+
+        // Priority 2: Photo preview modal open -> cancel photo preview
+        if (el.photoPreviewModal && !el.photoPreviewModal.classList.contains('hidden')) {
+          if (el.cancelSendPhotoBtn) el.cancelSendPhotoBtn.click();
+          else el.photoPreviewModal.classList.add('hidden');
+          return;
+        }
+
+        // Priority 3: Photo source modal open -> close source modal
+        if (el.photoSourceModal && !el.photoSourceModal.classList.contains('hidden')) {
+          el.photoSourceModal.classList.add('hidden');
+          return;
+        }
+
+        // Priority 4: Custom deck modal open -> close deck modal
+        if (el.customDeckModal && !el.customDeckModal.classList.contains('hidden')) {
+          el.customDeckModal.classList.add('hidden');
+          return;
+        }
+
+        // Priority 5: Leave confirm modal open -> dismiss leave modal
+        if (el.leaveConfirmModal && !el.leaveConfirmModal.classList.contains('hidden')) {
+          el.leaveConfirmModal.classList.add('hidden');
+          return;
+        }
+
+        // Priority 6: App exit modal open -> dismiss app exit modal
+        if (el.appExitModal && !el.appExitModal.classList.contains('hidden')) {
+          el.appExitModal.classList.add('hidden');
+          return;
+        }
+
+        // Priority 7: In an active room screen -> show sketch "Leave this Notebook?" modal
+        if (el.roomScreen && !el.roomScreen.classList.contains('hidden')) {
+          if (el.leaveConfirmModal) el.leaveConfirmModal.classList.remove('hidden');
+          return;
+        }
+
+        // Priority 8: On Lobby screen -> show sketch "Exit Truth or Dare?" confirmation modal
+        if (el.lobbyScreen && !el.lobbyScreen.classList.contains('hidden')) {
+          if (el.appExitModal) el.appExitModal.classList.remove('hidden');
+        }
+      }
+
+      // Register Capacitor Hardware Back Button Listener
+      (async function setupBackButtonListener() {
+        try {
+          if (window.Capacitor && window.Capacitor.isPluginAvailable && window.Capacitor.isPluginAvailable('App')) {
+            const { App } = await import('@capacitor/app');
+            App.addListener('backButton', () => {
+              handleHardwareBackButton();
+            });
+          }
+        } catch (e) {
+          console.warn('Capacitor App plugin listener setup:', e);
+        }
+
+        // Browser / PWA popstate safety net
+        window.addEventListener('popstate', () => {
+          handleHardwareBackButton();
+        });
+      })();
 
       /* ----------------------------------------------------------
          13. AUTO-RESTORE SESSION IF PAGE WAS MINIMIZED / RELOADED
