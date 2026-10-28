@@ -2623,7 +2623,7 @@
 
       el.chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const text = el.chatMessageInput.value.trim().slice(0, 280);
+        const text = el.chatMessageInput.value.trim().slice(0, 500);
         if (!text) return;
 
         el.chatMessageInput.value = '';
