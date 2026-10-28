@@ -290,20 +290,9 @@
               return item;
             })
           };
-          // Military-grade encryption at rest: Encrypt snapshot with AES-256-GCM before saving
-          if (CryptoEngine.key) {
-            const encrypted = await CryptoEngine.encryptPayload(snapshot);
-            if (encrypted) {
-              const envelope = {
-                roomCode: state.roomCode,
-                iv: encrypted.iv,
-                ct: encrypted.ct
-              };
-              sessionStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
-              return;
-            }
-          }
+          // Store session snapshot directly in sessionStorage to survive refresh seamlessly
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+          if (state.myName) localStorage.setItem('tod_saved_name', state.myName);
         } catch (e) {
           console.warn('Could not save session snapshot:', e);
         }
@@ -2689,13 +2678,18 @@
 
           let saved = parsed;
           if (parsed.iv && parsed.ct) {
-            // Decrypt AES-256-GCM encrypted snapshot
-            await CryptoEngine.initRoomKey(parsed.roomCode);
-            saved = await CryptoEngine.decryptPayload({ iv: parsed.iv, ct: parsed.ct });
+            try {
+              await CryptoEngine.initRoomKey(parsed.roomCode);
+              const dec = await CryptoEngine.decryptPayload({ iv: parsed.iv, ct: parsed.ct });
+              if (dec) saved = dec;
+            } catch (decErr) {
+              console.warn('Recovering session from base room code:', decErr);
+              saved = parsed;
+            }
           }
           if (!saved || !saved.roomCode || saved.roomCode.length !== 10) return;
 
-          state.myName = (saved.myName || 'Sketcher').slice(0, 6);
+          state.myName = (saved.myName || localStorage.getItem('tod_saved_name') || 'Sketcher').slice(0, 6);
           if (el.playerNameInput) el.playerNameInput.value = state.myName;
           state.myAvatar = EMOJI_TO_AVATAR_KEY[saved.myAvatar] || saved.myAvatar || 'fox';
           state.role = saved.role || 'host';
