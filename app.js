@@ -1368,7 +1368,7 @@
         } else if (state.gamePhase === 'card' && state.activeCard) {
           el.stageActiveCard.classList.remove('hidden');
           const isTruth = state.activeCard.type === 'truth';
-          el.activeCardBadge.textContent = isTruth ? '💬 TRUTH' : '⚡ DARE';
+          el.activeCardBadge.innerHTML = isTruth ? '<span class=\"safe-emoji\">💬</span><span>TRUTH</span>' : '<span class=\"safe-emoji\">⚡</span><span>DARE</span>';
           el.activeCardBadge.style.backgroundColor = isTruth ? '#7EE0C6' : '#FF8B8B';
 
           const isTargetMe = state.activeCard.target === 'me';
@@ -1377,16 +1377,16 @@
           const targetLabel = isTargetMe ? `You (${state.myName})` : state.partnerName;
           const authorLabel = isAuthorMe ? `You (${state.myName})` : state.partnerName;
 
-          el.activeCardTarget.textContent = `For ${targetLabel} • Asked by ${authorLabel}`;
+          el.activeCardTarget.textContent = isAuthorMe ? 'Asked by You' : `Asked by ${state.partnerOnline ? state.partnerName : 'Friend'}`;
 
           // Turn info badge on card
           if (el.activeCardTurnPill) {
             if (isTargetMe) {
-              el.activeCardTurnPill.textContent = '🎯 Your Turn to Answer';
-              el.activeCardTurnPill.className = 'px-2.5 py-0.5 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#7EE0C6] whitespace-nowrap';
+              el.activeCardTurnPill.innerHTML = '<span class="safe-emoji">🎯</span><span>Your Turn</span>';
+              el.activeCardTurnPill.className = 'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#7EE0C6] whitespace-nowrap shrink-0 shadow-sm leading-none';
             } else {
-              el.activeCardTurnPill.textContent = `🎲 ${state.partnerName}'s Turn to Answer`;
-              el.activeCardTurnPill.className = 'px-2.5 py-0.5 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#FFE46B] whitespace-nowrap';
+              el.activeCardTurnPill.innerHTML = `<span class="safe-emoji">🎲</span><span>${escapeHtml(state.partnerOnline ? state.partnerName : 'Friend')}'s Turn</span>`;
+              el.activeCardTurnPill.className = 'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-ui font-bold border-2 border-[#2B2623] rounded-full bg-[#FFE46B] whitespace-nowrap shrink-0 shadow-sm leading-none';
             }
           }
 
