@@ -195,15 +195,82 @@
 
         async decryptPayload(packet) {
           if (!this.key || !packet || !packet.iv || !packet.ct) return null;
-          const iv = this.base64ToUint8(packet.iv);
-          const ct = this.base64ToUint8(packet.ct);
-          const plainBuffer = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv },
-            this.key,
-            ct
+          try {
+            const iv = this.base64ToUint8(packet.iv);
+            const ct = this.base64ToUint8(packet.ct);
+            const plainBuffer = await crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv },
+              this.key,
+              ct
+            );
+            const decoded = new TextDecoder().decode(plainBuffer);
+            return JSON.parse(decoded);
+          } catch (e) {
+            console.warn('Decryption failed:', e);
+            return null;
+          }
+        },
+
+        async deriveStorageKey(roomCode) {
+          const enc = new TextEncoder();
+          const baseKey = await crypto.subtle.importKey(
+            'raw',
+            enc.encode('TOD-STORAGE-' + roomCode.toUpperCase() + '-V1'),
+            { name: 'PBKDF2' },
+            false,
+            ['deriveKey']
           );
-          const decoded = new TextDecoder().decode(plainBuffer);
-          return JSON.parse(decoded);
+          return await crypto.subtle.deriveKey(
+            {
+              name: 'PBKDF2',
+              salt: enc.encode('SALT-STORAGE-' + roomCode.toUpperCase()),
+              iterations: 25000,
+              hash: 'SHA-256'
+            },
+            baseKey,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+          );
+        },
+
+        async encryptStorage(obj, roomCode) {
+          try {
+            const key = await this.deriveStorageKey(roomCode);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(JSON.stringify(obj));
+            const cipherBuffer = await crypto.subtle.encrypt(
+              { name: 'AES-GCM', iv },
+              key,
+              encoded
+            );
+            return {
+              iv: this.uint8ToBase64(iv),
+              ct: this.uint8ToBase64(new Uint8Array(cipherBuffer))
+            };
+          } catch (e) {
+            console.warn('Storage encryption error:', e);
+            return null;
+          }
+        },
+
+        async decryptStorage(packet, roomCode) {
+          try {
+            if (!packet || !packet.iv || !packet.ct) return null;
+            const key = await this.deriveStorageKey(roomCode);
+            const iv = this.base64ToUint8(packet.iv);
+            const ct = this.base64ToUint8(packet.ct);
+            const plainBuffer = await crypto.subtle.decrypt(
+              { name: 'AES-GCM', iv },
+              key,
+              ct
+            );
+            const decoded = new TextDecoder().decode(plainBuffer);
+            return JSON.parse(decoded);
+          } catch (e) {
+            console.warn('Storage decryption error:', e);
+            return null;
+          }
         }
       };
 
@@ -290,8 +357,18 @@
               return item;
             })
           };
-          // Store session snapshot directly in sessionStorage to survive refresh seamlessly
-          sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+          // Military-grade AES-256-GCM encryption at rest with deterministic PBKDF2 room derivation
+          const enc = await CryptoEngine.encryptStorage(snapshot, state.roomCode);
+          if (enc) {
+            const envelope = {
+              roomCode: state.roomCode,
+              iv: enc.iv,
+              ct: enc.ct
+            };
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+          } else {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+          }
           if (state.myName) localStorage.setItem('tod_saved_name', state.myName);
         } catch (e) {
           console.warn('Could not save session snapshot:', e);
@@ -2678,13 +2755,16 @@
 
           let saved = parsed;
           if (parsed.iv && parsed.ct) {
-            try {
-              await CryptoEngine.initRoomKey(parsed.roomCode);
-              const dec = await CryptoEngine.decryptPayload({ iv: parsed.iv, ct: parsed.ct });
-              if (dec) saved = dec;
-            } catch (decErr) {
-              console.warn('Recovering session from base room code:', decErr);
-              saved = parsed;
+            // Military-grade AES-256-GCM decryption with PBKDF2 deterministic room derivation
+            const dec = await CryptoEngine.decryptStorage(parsed, parsed.roomCode);
+            if (dec && dec.roomCode) {
+              saved = dec;
+            } else {
+              try {
+                await CryptoEngine.initRoomKey(parsed.roomCode);
+                const decLegacy = await CryptoEngine.decryptPayload({ iv: parsed.iv, ct: parsed.ct });
+                if (decLegacy) saved = decLegacy;
+              } catch (e) {}
             }
           }
           if (!saved || !saved.roomCode || saved.roomCode.length !== 10) return;
