@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Truth or Dare</string>
+    <string name="title_activity_main">Truth or Dare</string>
+    <string name="package_name">com.truthordare.sketch</string>
+    <string name="custom_url_scheme">com.truthordare.sketch</string>
+</resources>

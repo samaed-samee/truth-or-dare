@@ -1,0 +1,17 @@
+{
+  "appId": "com.truthordare.sketch",
+  "appName": "Truth or Dare",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#000000",
+      "overlaysWebView": false
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
+

@@ -1,0 +1,32 @@
+{
+  "name": "truth-or-dare---sketch-style-ui",
+  "version": "1.0.0",
+  "description": "> A cozy, hand-drawn sketch-style web app for two friends to play Truth or Dare in real time — featuring private peer-to-peer WebRTC networking, end-to-end encryption (E2EE), live voice chat, custom prompt decks, and instant polaroid snap sharing.",
+  "main": "app.js",
+  "scripts": {
+    "copy-web": "node -e \"const fs = require('fs'); if (!fs.existsSync('www')) fs.mkdirSync('www'); ['index.html', 'app.js', 'style.css'].forEach(f => fs.copyFileSync(f, 'www/' + f)); console.log('Copied web assets to www/');\"",
+    "sync": "npm run copy-web && npx cap sync android",
+    "open-android": "npx cap open android",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/samaed-samee/truth-or-dare.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/samaed-samee/truth-or-dare/issues"
+  },
+  "homepage": "https://github.com/samaed-samee/truth-or-dare#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/status-bar": "^8.0.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}
