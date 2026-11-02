@@ -1119,7 +1119,8 @@
               if (data.activeCard) {
                 state.activeCard = {
                   ...data.activeCard,
-                  target: data.activeCard.target === 'me' ? 'partner' : 'me'
+                  target: data.activeCard.target === 'me' ? 'partner' : 'me',
+                  author: data.activeCard.author === 'me' ? 'partner' : 'me'
                 };
                 state.gamePhase = 'card';
               }
@@ -1270,18 +1271,27 @@
           }
 
           case 'game_card_complete': {
-            state.turn = 'me'; // Next round I choose Truth or Dare
+            // Partner confirmed that I finished my challenge!
+            // My turn is complete -> Next round rotates to partner's turn to pick Truth or Dare!
+            state.turn = data.nextTurn || 'partner';
             state.activeCard = null;
             state.gamePhase = 'pick';
             renderGameStage();
             appendSystemEvent(`✓ You completed the ${data.cardType.toUpperCase()}! Next turn!`, 'complete');
-            showToast(`✓ Completed the ${data.cardType.toUpperCase()}!`, '✨', '#A8E6CF');
+            showToast(`✓ Completed the ${data.cardType.toUpperCase()}! Next turn!`, '✨', '#A8E6CF');
             saveSessionState();
             break;
           }
 
           case 'game_card_skip': {
-            state.turn = state.turn === 'me' ? 'partner' : 'me';
+            if (data.nextTurn) {
+              state.turn = data.nextTurn;
+            } else if (state.activeCard) {
+              const wasTargetMe = state.activeCard.target === 'me';
+              state.turn = wasTargetMe ? 'partner' : 'me';
+            } else {
+              state.turn = state.turn === 'me' ? 'partner' : 'me';
+            }
             state.activeCard = null;
             state.gamePhase = 'pick';
             renderGameStage();
@@ -1414,6 +1424,15 @@
           el.stagePickTitle.textContent = isMyTurn
             ? `Your Turn (${state.myName})! Pick Truth or Dare:`
             : `${state.partnerOnline ? state.partnerName : 'Friend'}'s Turn to pick Truth or Dare:`;
+          
+          if (el.chooseTruthBtn && el.chooseDareBtn) {
+            el.chooseTruthBtn.classList.toggle('opacity-60', !isMyTurn);
+            el.chooseTruthBtn.classList.toggle('cursor-not-allowed', !isMyTurn);
+            el.chooseTruthBtn.title = isMyTurn ? 'Pick Truth' : `It's ${state.partnerOnline ? state.partnerName : 'friend'}'s turn`;
+            el.chooseDareBtn.classList.toggle('opacity-60', !isMyTurn);
+            el.chooseDareBtn.classList.toggle('cursor-not-allowed', !isMyTurn);
+            el.chooseDareBtn.title = isMyTurn ? 'Pick Dare' : `It's ${state.partnerOnline ? state.partnerName : 'friend'}'s turn`;
+          }
         } else if (state.gamePhase === 'waiting_card') {
           if (el.stageWaitingPrompt) {
             el.stageWaitingPrompt.classList.remove('hidden');
@@ -2471,6 +2490,11 @@
 
       // Game Stage Actions
       function handleChooseTruthOrDare(type) {
+        if (state.turn !== 'me') {
+          const partnerLabel = state.partnerOnline ? state.partnerName : 'Friend';
+          showToast(`It's ${partnerLabel}'s turn to pick! (Spin pencil ✏️ to randomize)`, '⏳', '#FFE46B');
+          return;
+        }
         state.selectedType = type;
         // User who clicked enters waiting_card state! Partner will compose and send the card!
         state.gamePhase = 'waiting_card';
@@ -2534,8 +2558,9 @@
         const cType = state.activeCard.type;
         const winnerName = state.partnerName;
 
-        // Next turn goes to the partner who just answered!
-        state.turn = 'partner';
+        // Partner finished answering their challenge!
+        // Now it rotates: next turn belongs to ME to pick Truth or Dare!
+        state.turn = 'me';
         state.activeCard = null;
         state.gamePhase = 'pick';
         renderGameStage();
@@ -2546,14 +2571,20 @@
           type: 'game_card_complete',
           cardType: cType,
           winnerName: winnerName,
-          authorName: state.myName
+          authorName: state.myName,
+          nextTurn: 'partner' // Partner who answered now waits for my pick
         });
       });
 
       el.skipCardBtn.addEventListener('click', () => {
         if (!state.activeCard) return;
         const cType = state.activeCard.type;
-        state.turn = state.turn === 'me' ? 'partner' : 'me';
+        const wasTargetMe = state.activeCard.target === 'me';
+        // If I was answering (target), my turn ends -> next turn is partner ('partner')
+        // If I was asking (author), partner skipped -> next turn is my turn ('me')
+        const myNextTurn = wasTargetMe ? 'partner' : 'me';
+        const partnerNextTurn = wasTargetMe ? 'me' : 'partner';
+        state.turn = myNextTurn;
         state.activeCard = null;
         state.gamePhase = 'pick';
         renderGameStage();
@@ -2562,7 +2593,8 @@
 
         sendEncrypted({
           type: 'game_card_skip',
-          playerName: state.myName
+          playerName: state.myName,
+          nextTurn: partnerNextTurn
         });
       });
 
